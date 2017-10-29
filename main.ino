@@ -2,6 +2,7 @@
 #include <SoftwareSerial.h>
 #include <Wire.h> // I2C communication
 #include "RTCLib.h"
+#include "main.h"
 
 #define THERMISTOR_PIN 0
 #define PHOTORESIS_PIN 1
@@ -66,6 +67,8 @@ void setup() {
 }
 
 void loop() {
+ // EEPROM.write(address_e, nowTime)
+  
   String dataString = "";
 
   // Extra Security for BLE Serial
@@ -80,17 +83,16 @@ void loop() {
         Serial.println("Get the help message for usage.");
         BLESerial.println("*** Manual for commands ***");
         BLESerial.println("t - get the actual temperature");
-        BLESerial.println("l - get the actual light value");
+        BLESerial.println("ll - get the actual light value");
         BLESerial.println("-lc - list of the config values");
-        BLESerial.println("-lo - set on light limit");
-        BLESerial.println("-lq - set offá light limit");
+        BLESerial.println("-lo - set [ON] light limit");
+        BLESerial.println("-lq - set [OFF] light limit");
+        BLESerial.println("-i - time parser");
+        BLESerial.println("-p - time reader");
         break;
       case 't':
-        Vout = Vin * ((float)(analogRead(THERMISTOR_PIN)) / 1024.0); // Calc for NTC
-        Rout = (Rt * Vout / (Vin - Vout));
-        TempC = (beta / log(Rout / Rinf)) - 273.15;
         BLESerial.print("Temperature: ");
-        BLESerial.print(TempC);
+        BLESerial.print(temperatureSensor());
         BLESerial.println(" C");
         break;
       case 'l':
@@ -118,12 +120,14 @@ void loop() {
               BLESerial.print("Light OFF config saved: ");
               BLESerial.println(phoVal);
               break;
+            case 'l':
+              BLESerial.print("Read the light value: ");
+              BLESerial.println(phoVal);
+              break;
             default:
               BLESerial.println("Command not found. Use 'h' for command list");
           }
         }
-        BLESerial.print("Read the light value: ");
-        BLESerial.println(phoVal);
         break;
       case 'w':
         BLESerial.println("Write the photoresistor value.");
@@ -135,6 +139,19 @@ void loop() {
         value_e = EEPROM.read(address_e - 1);
         Serial.println(value_e);
         BLESerial.println(value_e);
+        break;
+      case 'i':
+        Serial.println("TIME PARSER(0)");
+        TimeParser(address_e);
+        address_e += 4;
+        break;
+      case 'p':
+        Serial.println("TIME READ(0)");
+        address_e -= 4;
+        TimeReader(address_e);
+        break;
+      case 'b':
+        memoryReader();
         break;
       default:
         BLESerial.println("Command not found. Check out the available commands with 'h'.");
@@ -148,26 +165,68 @@ void loop() {
     digitalWrite(LED_PIN, LOW);
   }
 
-  TimeParser();
-  //BLESerial.println("Connection established.");
-
-  //delay(1000); // delay 1sec
+  temperatureLogger(address_e);
+  delay(1000); // delay 1sec
+  
 }
 
-void TimeParser() {
+float temperatureSensor() {
+  Vout = Vin * ((float)(analogRead(THERMISTOR_PIN)) / 1024.0); // Calc for NTC
+  Rout = (Rt * Vout / (Vin - Vout));
+  TempC = (beta / log(Rout / Rinf)) - 273.15;
+
+  return TempC;
+}
+
+void temperatureLogger(int address_e) {
+  EEPROM.write(address_e++, temperatureSensor());
+}
+
+void memoryReader() {
+  int address = 0;
+  while(EEPROM.read(address) != 0) {
+    Serial.print("MEMORY READ: ");
+    int tmp = EEPROM.read(address);
+    Serial.println(tmp);
+  }
+}
+
+void TimeParser(int address) {
+  int time_address = address; 
+  time_t timeStruct;
   // Initialize the current time
   DateTime now = RTC.now();
   
-  String theyear = String(now.year(), DEC);
-  String mon = String(now.month(), DEC);
-  String theday = String(now.day(), DEC);
-  String thehour = String(now.hour(), DEC);
-  String themin = String(now.minute(), DEC);
+  int year_t = now.year();  // 2 byte 
+  timeStruct.month = now.month();
+  timeStruct.day = now.day();
+  timeStruct.hour = now.hour();
+  timeStruct.minute = now.minute();
+  byte sec_t = now.second();
   
   //Put all the time and date strings into one String
-  String dataString = String(theyear + "/" + mon + "/" + theday + ", " + thehour + ":" + themin);
   
-  Serial.print("Time parsing... ");
-  Serial.println(dataString);
+  Serial.println("Time parsing: ");
+  //Serial.println(dataString);
+
+  EEPROM.write(time_address++, timeStruct.month); 
+  EEPROM.write(time_address++, timeStruct.day);
+  EEPROM.write(time_address++, timeStruct.hour);
+  EEPROM.write(time_address++, timeStruct.minute);
  }
 
+void TimeReader(int address) {
+  int time_address = address;
+  int tmp_mon = EEPROM.read(time_address++);
+  int tmp_day = EEPROM.read(time_address++);
+  int tmp_hour = EEPROM.read(time_address++);
+  int tmp_min = EEPROM.read(time_address++);
+  BLESerial.print("Month: ");
+  BLESerial.println(tmp_mon);
+  BLESerial.print("Day: ");
+  BLESerial.println(tmp_day);
+  BLESerial.print("Hour: ");
+  BLESerial.println(tmp_hour);
+  BLESerial.print("Minute: ");
+  BLESerial.println(tmp_min);
+ }
