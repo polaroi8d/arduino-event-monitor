@@ -19,7 +19,8 @@ float R0 = 10000;    // value of rct in T0 [ohm]
 float T0 = 298.15;   // use T0 in Kelvin [K]
 float Vout = 0.0;    // Vout in A0
 float Rout = 0.0;    // Rout in A0
-int phoVal;
+byte phoVal;
+int photo_tlimit;
 
 // BLE communication
 char recBuf;
@@ -87,6 +88,7 @@ void loop() {
         BLESerial.println("-lc - list of the config values");
         BLESerial.println("-lo - set [ON] light limit");
         BLESerial.println("-lq - set [OFF] light limit");
+        BLESerial.println("-lt - threshold limit");
         BLESerial.println("-i - time parser");
         BLESerial.println("-p - time reader");
         break;
@@ -96,8 +98,8 @@ void loop() {
         BLESerial.println(" C");
         break;
       case 'l':
-        phoVal = analogRead(PHOTORESIS_PIN)/10;
-        if (EEPROM.read(100) == 0 && EEPROM.read(101) == 0) {
+        phoVal = analogRead(PHOTORESIS_PIN);
+        if (EEPROM.read(0) == 0 && EEPROM.read(2) == 0) {
           BLESerial.println("< Configuration not found, for the light sensor! >");
         }
         if (BLESerial.available()) {
@@ -106,17 +108,19 @@ void loop() {
             case 'c':
               BLESerial.println("Light module configuration");
               BLESerial.print("ON limit: ");
-              BLESerial.println(EEPROM.read(100));
+              BLESerial.println(EEPROM.read(0));
               BLESerial.print("OFF limit: ");
-              BLESerial.println(EEPROM.read(101));
+              BLESerial.println(EEPROM.read(2));
               break;
             case 'o':
-              EEPROM.write(100, phoVal);
+              EEPROM.write(0, phoVal);
+              Serial.print("Read the 0 value on flash: ");
+              Serial.println(EEPROM.read(0));
               BLESerial.print("Light ON config saved: ");
               BLESerial.println(phoVal);
               break;
             case 'q':
-              EEPROM.write(101, phoVal);
+              EEPROM.write(2, phoVal);
               BLESerial.print("Light OFF config saved: ");
               BLESerial.println(phoVal);
               break;
@@ -124,6 +128,10 @@ void loop() {
               BLESerial.print("Read the light value: ");
               BLESerial.println(phoVal);
               break;
+            case 't':
+              photo_tlimit = BLESerial.read();
+              BLESerial.print("Photoresistor threshold limit: ");
+              BLESerial.println(photo_tlimit);
             default:
               BLESerial.println("Command not found. Use 'h' for command list");
           }
