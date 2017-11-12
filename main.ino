@@ -1,7 +1,5 @@
 #include <EEPROM.h>
 #include <SoftwareSerial.h>
-#include <Wire.h> // I2C communication
-#include "RTCLib.h"
 #include "main.h"
 
 #define PHOTORESIS_PIN 1
@@ -12,31 +10,27 @@
 SoftwareSerial BLESerial(TX_PIN, RX_PIN); // TX, RX
 
 int phoVal;
-int phoValWord;
-int photo_tlimit;
-byte high;
-byte low;
+int i_data = 0;
+int tmp_address;
 
 // BLE communication
-char recBuf;
+char recieve_buff;
 
 // EEPROM variables
-int address_e = 0;
-byte value_e;
-int bytemax_e = 1024;
+byte high;
+byte low;
 
 void setup() {
   Serial.begin(9600);
   BLESerial.begin(9600);
-  Wire.begin();
 
   pinMode(PHOTORESIS_PIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
 
   // Write a 0 to all 1024 bytes of the EEPROM
   // 1024 bytes in the ATmega328 EEPROM
-  for (int i = 0; i < 1024; i++) {
-    EEPROM.write(i, 0);
+  for (int z=0; z<1024; z++) {
+    EEPROM.write(z, 0);
     digitalWrite(13, HIGH); // Turn led on until formating the memory
   }
   digitalWrite(13, LOW);
@@ -44,8 +38,8 @@ void setup() {
 
 void loop() {
   if (BLESerial.available()) {
-    recBuf = BLESerial.read();
-    switch (recBuf) {
+    recieve_buff = BLESerial.read();
+    switch (recieve_buff) {
       case 'h':
         Serial.println("Get the help message for usage.");
         BLESerial.println("*** Manual for commands ***");
@@ -53,16 +47,13 @@ void loop() {
         BLESerial.println("-lc - list of the config values");
         BLESerial.println("-lo - set [ON] light limit");
         BLESerial.println("-lq - set [OFF] light limit");
-        BLESerial.println("-lt - threshold limit");
+        BLESerial.println("-lr - read the values from memory");
+        BLESerial.println("-ls - Start sampling the data");
         break;
       case 'l':
-        phoVal = analogRead(PHOTORESIS_PIN);
-        if (EEPROM.read(0) == 0 && EEPROM.read(2) == 0) {
-          BLESerial.println("Configuration not found!");
-        }
         if (BLESerial.available()) {
-          recBuf = BLESerial.read();
-          switch (recBuf) {
+          recieve_buff = BLESerial.read();
+          switch (recieve_buff) {
             case 'c':
               BLESerial.println("Light module configuration");
               BLESerial.print("ON limit: ");
@@ -138,7 +129,6 @@ void loop() {
         break;
     }
   }
-  delay(1000); // delay 1sec
 }
 
 
