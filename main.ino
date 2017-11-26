@@ -1,18 +1,22 @@
 #include <EEPROM.h>
 #include <SoftwareSerial.h>
 #include "main.h"
+#include "dht.h"
 
 #define PHOTORESIS_PIN 1
+#define DHT11_PIN 4
 #define LED_PIN 13
 #define RX_PIN 8
 #define TX_PIN 7
 
 SoftwareSerial BLESerial(TX_PIN, RX_PIN); // TX, RX
+dht DHT;
 
 int phoVal;
 int i_data = 0;
 int tmp_address;
 int read_tmp = 0;
+int dht_sensor;
 
 // BLE communication
 char recieve_buff;
@@ -46,12 +50,15 @@ void loop() {
       case 'h': // h 104
         Serial.println("Get the help message for usage.");
         BLESerial.println("*** Manual for commands ***");
+        BLESerial.println("w - get the actual temperature value");
+        BLESerial.println("e - get the actual humidity value");
         BLESerial.println("l - get the actual light value");
         BLESerial.println("c - list of the config values");
         BLESerial.println("o - set [ON] light limit");
         BLESerial.println("q - set [OFF] light limit");
         BLESerial.println("r - read the values from memory");
-        BLESerial.println("s - Start sampling the data");
+        BLESerial.println("s - start sampling the data (photoresistor mode)");
+
         break;
       case 'l': // l 108
         phoVal = analogRead(PHOTORESIS_PIN);
@@ -117,11 +124,26 @@ void loop() {
         }
         BLESerial.println("Stoped the sampling.");
         break;
+      case 'w':
+        dht_sensor = DHT.read11(DHT11_PIN);
+        BLESerial.print("Temperature: ");
+        BLESerial.println(DHT.temperature);
+        break;
+      case 'e':
+        dht_sensor = DHT.read11(DHT11_PIN);
+        BLESerial.print("Humidity: ");
+        BLESerial.println(DHT.humidity);
       default:
         BLESerial.println("Command not found. Check out the available commands with 'h'.");
         break;
     }
   }
+  int chk = DHT.read11(DHT11_PIN);
+  Serial.print("Temperature = ");
+  Serial.println(DHT.temperature);
+  Serial.print("Humidity = ");
+  Serial.println(DHT.humidity);
+  delay(2000);
 }
 
 
