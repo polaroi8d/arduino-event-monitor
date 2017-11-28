@@ -133,17 +133,12 @@ void loop() {
         dht_sensor = DHT.read11(DHT11_PIN);
         BLESerial.print("Humidity: ");
         BLESerial.println(DHT.humidity);
+        break;
       default:
         BLESerial.println("Command not found. Check out the available commands with 'h'.");
         break;
     }
   }
-  int chk = DHT.read11(DHT11_PIN);
-  Serial.print("Temperature = ");
-  Serial.println(DHT.temperature);
-  Serial.print("Humidity = ");
-  Serial.println(DHT.humidity);
-  delay(2000);
 }
 
 
