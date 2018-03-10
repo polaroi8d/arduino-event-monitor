@@ -6,6 +6,7 @@
 
 #define PHOTORESIS_PIN 1
 #define DHT11_PIN 4
+#define HALL_PIN 6
 #define RX_PIN 8
 #define TX_PIN 7
 
@@ -14,14 +15,13 @@ SPIFlash flash;
 dht DHT;
 
 int phoVal;
-int i_data = 0;
+int hallVal;
+int dhtVal;
+
 int tmp_address;
 int read_tmp = 0;
-int dht_sensor;
-unsigned long past_time;
 
-// BLE communication
-char recieve_buff;
+unsigned long past_time;
 
 // EEPROM
 uint32_t strAddr = 0;
@@ -32,30 +32,36 @@ void setup() {
   BLESerial.begin(9600);
   flash.begin();
 
-  pinMode(PHOTORESIS_PIN, OUTPUT);
+  pinMode(PHOTORESIS_PIN, INPUT);
+  pinMode(HALL_PIN, INPUT); 
 }
 
 void loop() {
   if (BLESerial.available()) {
-    recieve_buff = BLESerial.read();
-    Serial.print(recieve_buff);
-    switch (recieve_buff) {
+    char recieveBuff = BLESerial.read();  // BLE recieve buffer
+    switch (recieveBuff) {
       case 'h': // h 104
         Serial.println("Get the help message for usage.");
-        BLESerial.println("*** Manual for commands ***");
+        BLESerial.println("******************************************");
         BLESerial.println("w - get the actual temperature value");
         BLESerial.println("e - get the actual humidity value");
+        BLESerial.println("a - get actual hall sensor");
         BLESerial.println("l - get the actual light value");
         BLESerial.println("c - list of the config values");
         BLESerial.println("o - set [ON] light limit");
         BLESerial.println("q - set [OFF] light limit");
         BLESerial.println("r - read the values from memory");
         BLESerial.println("s - start sampling the data (photoresistor mode)");
-
+        BLESerial.println("******************************************");
+        break;
+      case 'a':
+        hallVal = digitalRead(HALL_PIN);
+        BLESerial.print("HALL:");
+        BLESerial.println(hallVal);
         break;
       case 'l': // l 108
         phoVal = analogRead(PHOTORESIS_PIN);
-        BLESerial.print("Read the light value: ");
+        BLESerial.print("LIGHT:");
         BLESerial.println(phoVal);
         break;
       case 'c': // c 99
@@ -118,12 +124,12 @@ void loop() {
         BLESerial.println("Stoped the sampling.");
         break;*/
       case 'w':
-        dht_sensor = DHT.read11(DHT11_PIN);
+        dhtVal = DHT.read11(DHT11_PIN);
         BLESerial.print("Temperature: ");
         BLESerial.println(DHT.temperature);
         break;
       case 'e':
-        dht_sensor = DHT.read11(DHT11_PIN);
+        dhtVal = DHT.read11(DHT11_PIN);
         BLESerial.print("Humidity: ");
         BLESerial.println(DHT.humidity);
         break;
@@ -135,7 +141,7 @@ void loop() {
           if (BLESerial.available()) {
             sampling_stopper = BLESerial.read();
           }
-          dht_sensor = DHT.read11(DHT11_PIN);
+          dhtVal = DHT.read11(DHT11_PIN);
           BLESerial.print("Temperature: ");
           BLESerial.println(DHT.temperature);
           BLESerial.print("Humidity: ");
@@ -158,6 +164,8 @@ void loop() {
         break;
       default:
         BLESerial.println("Command not found. Check out the available commands with 'h'.");
+        BLESerial.println("RECIEVE BUFFER:");
+        BLESerial.print(recieveBuff);
         break;
     }
   }
