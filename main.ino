@@ -1,6 +1,7 @@
 #include <SoftwareSerial.h>
 #include <SPIFlash.h>
 #include <SPI.h>
+#include <stdint.h>
 #include "main.h"
 #include "dht.h"
 
@@ -24,7 +25,7 @@ int read_tmp = 0;
 unsigned long past_time;
 
 // EEPROM
-uint32_t strAddr = 0;
+uint16_t strAddr = 0;
 char output = "";
 
 void setup() {

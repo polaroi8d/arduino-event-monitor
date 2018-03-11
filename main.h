@@ -2,11 +2,11 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-typedef struct {
-    byte month;
-    byte day;
-    byte hour;
-    byte minute;
-} time_t;
+typedef struct uniqueTime {
+    uint8_t month;
+    uint8_t day;
+    uint8_t hour;
+    uint8_t minute;
+} uniqueTime;
 
 #endif // !MAIN_H
