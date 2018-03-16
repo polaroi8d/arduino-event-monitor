@@ -24,6 +24,9 @@ int read_tmp = 0;
 
 unsigned long past_time;
 
+// BLE Serial 
+char recieveBuff;
+
 // EEPROM
 uint16_t strAddr = 0;
 char output = "";
@@ -39,8 +42,32 @@ void setup() {
 
 void loop() {
   if (BLESerial.available()) {
-    char recieveBuff = BLESerial.read();  // BLE recieve buffer
+    recieveBuff = BLESerial.read();  // BLE recieve buffer
+    /*if (recieveBuff = 'A') {
+      Serial.println("Recieved WEATHER TYPE OF SENDER");
+      Serial.println(recieveBuff);
+      BLESerial.println("STATUS:READY");
+    } else*/
+    Serial.print("Recieved buffer: ");
+    Serial.println(recieveBuff);
+    
     switch (recieveBuff) {
+      case 'w':
+        Serial.println("weather");
+        BLESerial.println("STATUS:READY");
+        break;
+      case 'd':
+        Serial.println("distance");
+        BLESerial.println("STATUS:READY");
+        break;
+      case 'l':
+        Serial.println("light");
+        BLESerial.println("STATUS:READY");
+        break;
+    }
+  }    
+  
+    /*switch (recieveBuff) {
       case 'h': // h 104
         Serial.println("Get the help message for usage.");
         BLESerial.println("******************************************");
@@ -96,34 +123,6 @@ void loop() {
         }
         digitalWrite(13, LOW);
         break;
-      /*case 's': // s 115
-        BLESerial.print("Start the sampling of the photoresistor values");
-        BLESerial.print("Use @ to stop it");
-        tmp_address = 4;
-        byte STATUS;
-        while (BLESerial.read() != '@') {
-          delay(1500);
-          phoVal = analogRead(PHOTORESIS_PIN);
-         if (phoVal > (EEPROMReadInt(0) + 100)) {
-            if (STATUS == 1) {
-              BLESerial.println("The lamp is turn off.");
-            }
-            Serial.println("Lightning off!");
-            EEPROM.write(tmp_address++, STATUS);
-            STATUS = 0;
-          } else if (phoVal < (EEPROMReadInt(2) - 100)) {
-            if (STATUS == 0) {
-              BLESerial.println("The lamp is turn on.");
-            }
-            Serial.println("Lightning on!");
-            EEPROM.write(tmp_address++, STATUS);
-            STATUS = 1;
-          } else {
-            Serial.println(phoVal);
-          }
-        }
-        BLESerial.println("Stoped the sampling.");
-        break;*/
       case 'w':
         dhtVal = DHT.read11(DHT11_PIN);
         BLESerial.print("Temperature: ");
@@ -168,6 +167,5 @@ void loop() {
         BLESerial.println("RECIEVE BUFFER:");
         BLESerial.print(recieveBuff);
         break;
-    }
-  }
+    }*/
 }
