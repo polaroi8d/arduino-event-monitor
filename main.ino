@@ -15,6 +15,12 @@ SoftwareSerial BLESerial(TX_PIN, RX_PIN); // TX, RX
 SPIFlash flash;
 dht DHT;
 
+/** CONFIG VARIABLES */
+int type;
+int mode;
+unsigned long freqy;
+
+/** SENSORS VARIABLES */
 int phoVal;
 int hallVal;
 int dhtVal;
@@ -40,29 +46,108 @@ void setup() {
   pinMode(HALL_PIN, INPUT); 
 }
 
+void configInfo() {
+    Serial.println("--------CONFIG WIZARD---------");
+    Serial.print("TYPE:");
+    Serial.println(type);
+    Serial.print("MODE:");
+    Serial.println(mode);
+    Serial.println("------------------------------");
+    Serial.println("");
+}
+
+void status(char status[]) {
+  if (status = "ready") {
+    BLESerial.println("STATUS:READY");
+  }
+}
+
 void loop() {
   if (BLESerial.available()) {
     recieveBuff = BLESerial.read();  // BLE recieve buffer
-    /*if (recieveBuff = 'A') {
-      Serial.println("Recieved WEATHER TYPE OF SENDER");
-      Serial.println(recieveBuff);
-      BLESerial.println("STATUS:READY");
-    } else*/
-    Serial.print("Recieved buffer: ");
-    Serial.println(recieveBuff);
+    
+    Serial.print("Recieved buffer: "); // TODO MAJD TÖRÖLNI
+    Serial.println(recieveBuff); // TODO MAJD TÖRÖLNI 
     
     switch (recieveBuff) {
       case 'w':
-        Serial.println("weather");
-        BLESerial.println("STATUS:READY");
+        Serial.println("sensor set: weather");
+        type = 0;
+        status("ready");
         break;
       case 'd':
-        Serial.println("distance");
-        BLESerial.println("STATUS:READY");
+        Serial.println("sensor set: distance");
+        type = 1;
+        status("ready");
         break;
       case 'l':
-        Serial.println("light");
-        BLESerial.println("STATUS:READY");
+        Serial.println("sensor set: light");
+        type = 2;
+        status("ready");
+        break;
+      case 'e':
+        Serial.println("event mode: event recognized");
+        mode = 0;
+        status("ready");
+        break;
+      case 's':
+        Serial.println("event mode: sampling");
+        mode = 1;
+        status("ready");
+        break;
+      case '5':
+        freqy = recieveBuff*100;
+        Serial.println("Timer frequency is saved.");
+        status("ready");
+        break;
+     case '1':
+        freqy = recieveBuff*1000;
+        Serial.println("Timer frequency is saved.");
+        status("ready");
+        break;
+     case '2':
+        freqy = recieveBuff*1000;
+        Serial.println("Timer frequency is saved.");
+        status("ready");
+        break;
+      case 'p':
+        Serial.println("Program stopped.");
+        status("ready");
+        break;
+      case 'r': 
+        Serial.println("****** S T A R T   P R O G R A M ******");
+        if (mode = '1') { //SAMPLING MODE
+          while(recieveBuff != 'p') {
+            switch (type) {
+              case 0: // WEATHER SENSOR SETUP
+                dhtVal = DHT.read11(DHT11_PIN);
+                BLESerial.print("Temperature: ");
+                BLESerial.println(DHT.temperature);
+                BLESerial.print("Humidity: ");
+                BLESerial.println(DHT.humidity);
+                break;
+              case 1: // DISTANCE SENSOR SETUP
+                hallVal = digitalRead(HALL_PIN);
+                BLESerial.print("Hall sensor:");
+                BLESerial.println(hallVal);
+                break;
+              case 2:  // LIGHT SENSOR SETUP
+                phoVal = analogRead(PHOTORESIS_PIN);
+                BLESerial.print("Light:");
+                BLESerial.println(phoVal);
+                break;
+            }
+            if (BLESerial.available()) {
+              recieveBuff = BLESerial.read();  // BLE recieve buffer
+            }
+            delay(freqy);  // SETUP SAMPLING TIME 
+          }
+          status("ready");
+        } else if (mode = '2') {
+          // TODO: Implement the event based logger
+        } else {
+          BLESerial.print("Other modes not ready now...");
+        }
         break;
     }
   }    
