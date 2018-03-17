@@ -123,7 +123,7 @@ void loop() {
         status("ready");
         break;
       case 'r':
-        Serial.println("****** S T A R T   P R O G R A M ******");
+        Log.notice("****** S T A R T   P R O G R A M ******"CR);
         if (mode = '1') { //SAMPLING MODE
           while (recieveBuff != 'p') {
             switch (type) {
@@ -136,12 +136,12 @@ void loop() {
                 break;
               case 1: // DISTANCE SENSOR SETUP
                 hallVal = digitalRead(HALL_PIN);
-                BLESerial.print("Hall sensor:");
+                BLESerial.print("Hall sensor: ");
                 BLESerial.println(hallVal);
                 break;
               case 2:  // LIGHT SENSOR SETUP
                 phoVal = analogRead(PHOTORESIS_PIN);
-                BLESerial.print("Light:");
+                BLESerial.print("Light: ");
                 BLESerial.println(phoVal);
                 break;
             }
