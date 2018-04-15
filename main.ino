@@ -1,8 +1,5 @@
 #include <SoftwareSerial.h>
-#include <SPIFlash.h>
-#include <SPI.h>
 #include "Log.h"
-#include <stdint.h>
 #include "main.h"
 #include "dht.h"
 
@@ -13,7 +10,6 @@
 #define TX_PIN 7
 
 SoftwareSerial BLESerial(TX_PIN, RX_PIN); // TX, RX
-SPIFlash flash;
 dht DHT;
 
 /** CONFIG VARIABLES */
@@ -26,23 +22,13 @@ int phoVal;
 int hallVal;
 int dhtVal;
 
-int tmp_address;
-int read_tmp = 0;
-
-unsigned long past_time;
-
 // BLE Serial
 char recieveBuff;
-
-// EEPROM
-uint16_t strAddr = 0;
-char output = "";
 
 void setup() {
   Log.begin(LOG_LEVEL_VERBOSE, &Serial);
   Serial.begin(9600);
   BLESerial.begin(9600);
-  flash.begin();
 
   configInfo();
 
@@ -104,6 +90,7 @@ void loop() {
       case 'T':
         freqy = 0;
         recieveBuff = "";
+        // recieve frequency -> magic parser 
         while(recieveBuff != ':'){
           readBLE();
           if(recieveBuff == ':'){
