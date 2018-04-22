@@ -13,8 +13,10 @@ SoftwareSerial BLESerial(TX_PIN, RX_PIN); // TX, RX
 dht DHT;
 
 /** CONFIG VARIABLES */
-int type;
-int mode;
+// TODO: This would be saved in the Flash memory 
+unsigned char type;
+unsigned char sensorMode;
+unsigned char tresholdMode;
 unsigned short sensorTreshold;
 unsigned long freqy;
 
@@ -43,9 +45,26 @@ void setup() {
 }
 
 void configInfo() {
-  Log.notice("CONFIG WIZARD:"CR);
+  Log.notice("******** CONFIG WIZARD: ********"CR);
   Log.notice("    TYPE: %d"CR, type);
-  Log.notice("    MODE: %d\n\n"CR, mode);
+  Log.notice("    SENSOR MODE: %d"CR, sensorMode);
+  Log.notice("    SENSOR TRESHOLD VALUE: %d"CR, sensorTreshold);
+  Log.notice("    SENSOR TRESHOLD MODE: %c"CR, tresholdMode);
+  Log.notice("    FREQUENCY %d SECOND"CR, (freqy/1000));
+  Log.notice("********************************"CR);
+}
+
+void sendConfig() {
+  BLESerial.println("******** CONFIG WIZARD: ********"CR);
+  BLESerial.print("    TYPE:");
+  BLESerial.println(type);
+  BLESerial.print("    SENSOR MODE:");
+  BLESerial.println(sensorMode);
+  BLESerial.print("    SENSOR TRESHOLD VALUE:");
+  BLESerial.println(sensorTreshold);
+  BLESerial.print("    FREQUENCY (IN SECONDS)");
+  BLESerial.println((freqy/1000));
+  BLESerial.println("********************************"CR);
 }
 
 void status(char status[]) {
@@ -70,10 +89,11 @@ void loop() {
     switch (recieveBuff) {
       case 'c':
         configInfo();
+        sendConfig();
         status("ready");
         break;
       case 'w':
-        Log.notice(" SENSOR SET: WEATHER"CR);
+        Log.notice(" SENSOR SET: TEMPERATURE"CR);
         type = 0;
         status("ready");
         break;
@@ -87,14 +107,31 @@ void loop() {
         type = 2;
         status("ready");
         break;
+      case 'h':
+        Log.notice(" SENSOR SET: HUMIDITY"CR);
+        type = 3;
+        status("ready");
+        break;
       case 'e':
         Log.notice(" MODE: EVENT"CR);
-        mode = 2;
+        sensorMode = 2;
         status("ready");
         break;
       case 's':
         Log.notice(" MODE: SAMPLING"CR);
-        mode = 1;
+        sensorMode = 1;
+        status("ready");
+        break;
+      case '-':
+        Log.notice(" TRESHOLD MODE: MIN"CR);
+        tresholdMode = '-';
+        BLESerial.println("The treshold mode is MIN");
+        status("ready");
+        break;
+      case '+':
+        Log.notice(" TRESHOLD  MODE: MAX"CR);
+        tresholdMode = '+';
+        BLESerial.println("The treshold mode is MAX");
         status("ready");
         break;
       case 'T':
@@ -122,31 +159,37 @@ void loop() {
       case 'q':
         Log.notice("TRESHOLD SAMPLING IS PROCCESED"CR);
         switch(type) {
-          case 0: // WEATHER SENSOR SETUP
-            dhtVal = DHT.read11(DHT11_PIN);
+          case 0: // TEMPERATURE SENSOR SETUP
+            DHT.read11(DHT11_PIN);
+            sensorTreshold = DHT.temperature;
             BLESerial.print("Temperature: ");
-            BLESerial.println(DHT.temperature);
-            BLESerial.print("Humidity: ");
-            BLESerial.println(DHT.humidity);
             break;
           case 1: // DISTANCE SENSOR SETUP
-            hallVal = digitalRead(HALL_PIN);
+            sensorTreshold = digitalRead(HALL_PIN);
             BLESerial.print("Hall sensor: ");
-            BLESerial.println(hallVal);
             break;
           case 2:  // LIGHT SENSOR SETUP
             sensorTreshold = analogRead(PHOTORESIS_PIN);
             BLESerial.print("Light: ");
-            BLESerial.println(sensorTreshold);
+            break;
+          case 3: // HUMIDITY SENSOR SETUP
+            DHT.read11(DHT11_PIN);
+            sensorTreshold = DHT.humidity;
+            BLESerial.print("Humidity: ");
             break;
           default:
             Log.warning("This sensor type is not defined yet"CR);
             break;
         }
+        BLESerial.println(sensorTreshold);
+        
+        // The duplicated for the treshold placer
+        BLESerial.print("SENSOR TRESHOLD:");
+        BLESerial.println(sensorTreshold);
         status("ready");
         break;
       case 'r':
-        if (mode == 1) { //SAMPLING MODE
+        if (sensorMode == 1) { //SAMPLING MODE
           configInfo();
           Log.notice("****** START SAMPLING MODE ******"CR);
           prevMillis = 0;
@@ -156,12 +199,11 @@ void loop() {
               prevMillis = currentMillis;
               Log.notice("Interrupt occured."CR);
               switch (type) {
-                case 0: // WEATHER SENSOR SETUP
-                  dhtVal = DHT.read11(DHT11_PIN);
+                // TODO IMPLEMENT THE FLASH MEMORY SAVE 
+                case 0: // TEMPERATURE SENSOR SETUP
+                  DHT.read11(DHT11_PIN);
                   BLESerial.print("Temperature: ");
                   BLESerial.println(DHT.temperature);
-                  BLESerial.print("Humidity: ");
-                  BLESerial.println(DHT.humidity);
                   break;
                 case 1: // DISTANCE SENSOR SETUP
                   hallVal = digitalRead(HALL_PIN);
@@ -173,6 +215,11 @@ void loop() {
                   BLESerial.print("Light: ");
                   BLESerial.println(phoVal);
                   break;
+                case 3: // HUMIDITY SENSOR SETUP
+                  DHT.read11(DHT11_PIN);
+                  BLESerial.print("Humidity: ");
+                  BLESerial.println(DHT.humidity);
+                  break;
               }
            }
            if (BLESerial.available()) {
@@ -180,7 +227,7 @@ void loop() {
            }
           }
           status("ready");
-        } else if (mode == 2) {
+        } else if (sensorMode == 2) {
           configInfo();
           Log.notice("****** START EVENT BASE MODE ******"CR);
           BLESerial.print("The treshold sensore value:");
@@ -193,8 +240,8 @@ void loop() {
               Log.notice("Interrupt occured."CR);
               switch (type) {
                 case 0: // WEATHER SENSOR SETUP
-                  tmpSensor = DHT.read11(DHT11_PIN);
-                  //BLESerial.print("Temperature: ");
+                  DHT.read11(DHT11_PIN);
+                  tmpSensor = DHT.temperature;
                   break;
                 case 1: // DISTANCE SENSOR SETUP
                   tmpSensor = digitalRead(HALL_PIN);
@@ -202,12 +249,35 @@ void loop() {
                 case 2:  // LIGHT SENSOR SETUP
                   tmpSensor = analogRead(PHOTORESIS_PIN);
                   break;
+                case 3:
+                  DHT.read11(DHT11_PIN);
+                  tmpSensor = DHT.humidity;
+                  break;
               }
 
-              if (tmpSensor > sensorTreshold) {
-                BLESerial.println("The sensor value occured the treshold maximum: ");
-                BLESerial.println(tmpSensor);
+              
+              switch(tresholdMode) {
+                case '-':
+                  BLESerial.print("MINIMUM");
+                  if (tmpSensor < sensorTreshold) {
+                    BLESerial.println("The sensor value: ");
+                    BLESerial.println(tmpSensor);
+                  }
+                  break;
+                case '+':
+                  BLESerial.print("MAXIMUM");
+                  if (tmpSensor > sensorTreshold) {
+                    BLESerial.println("The sensor value: ");
+                    BLESerial.println(tmpSensor);
+                  }
+                  break;
+                default:
+                  BLESerial.print("There is no such a treshold mode.");
+                  Log.notice("WARNING: TRESHOLD MODE NOT FOUND"CR);
+                  break;
               }
+
+
             }
             
             if (BLESerial.available()) {

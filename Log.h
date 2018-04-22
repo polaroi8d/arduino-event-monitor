@@ -220,7 +220,7 @@ private:
       if (level <= _level) {
         if(_prefix != NULL) _prefix(_logOutput);
         if (_showLevel) {
-          _logOutput->print("[INFO]:");
+          _logOutput->print("");
         }
         va_list args;
         va_start(args, msg);
