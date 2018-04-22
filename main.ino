@@ -19,6 +19,7 @@ unsigned char sensorMode;
 unsigned char tresholdMode;
 unsigned short sensorTreshold;
 unsigned long freqy;
+byte tresholdFlag = 0;
 
 /** SENSORS VARIABLES */
 int phoVal;
@@ -123,7 +124,7 @@ void loop() {
         status("ready");
         break;
       case '-':
-        Log.notice(" TRESHOLD MODE: MIN"CR);
+        Log.notice(" TRESHOLD MODE: EDGE"CR);
         tresholdMode = '-';
         BLESerial.println("The treshold mode is MIN");
         status("ready");
@@ -228,7 +229,6 @@ void loop() {
           }
           status("ready");
         } else if (sensorMode == 2) {
-          configInfo();
           Log.notice("****** START EVENT BASE MODE ******"CR);
           BLESerial.print("The treshold sensore value:");
           BLESerial.println(sensorTreshold);
@@ -237,7 +237,7 @@ void loop() {
             currentMillis = millis();
             if (currentMillis - prevMillis >= freqy ) {
               prevMillis = currentMillis;
-              Log.notice("Interrupt occured."CR);
+              // Log.notice("Interrupt occured."CR);
               switch (type) {
                 case 0: // WEATHER SENSOR SETUP
                   DHT.read11(DHT11_PIN);
@@ -255,19 +255,26 @@ void loop() {
                   break;
               }
 
-              
               switch(tresholdMode) {
                 case '-':
-                  BLESerial.print("MINIMUM");
-                  if (tmpSensor < sensorTreshold) {
-                    BLESerial.println("The sensor value: ");
+                  if (tmpSensor < sensorTreshold && tresholdFlag == 0) {
+                    //CSINÁLD 
+                    Serial.println("SENSOR < TRESHOLD");
+                    tresholdFlag = 1;
+                    BLESerial.println("[EDGE]: The sensor value: ");
                     BLESerial.println(tmpSensor);
-                  }
+                  } else if (tmpSensor >= sensorTreshold && tresholdFlag == 1) {
+                    BLESerial.println("[EDGE]: The sensor value: ");
+                    BLESerial.println(tmpSensor);
+                    Serial.println("SENSOR > TRESHOLD");
+                    tresholdFlag = 0;
+                  } else {
+                    Serial.println("No changes...");
+                    }
                   break;
                 case '+':
-                  BLESerial.print("MAXIMUM");
                   if (tmpSensor > sensorTreshold) {
-                    BLESerial.println("The sensor value: ");
+                    BLESerial.println("[MAX]: The sensor value: ");
                     BLESerial.println(tmpSensor);
                   }
                   break;
@@ -276,6 +283,10 @@ void loop() {
                   Log.notice("WARNING: TRESHOLD MODE NOT FOUND"CR);
                   break;
               }
+            BLESerial.print("tresholdFlag: ");
+            BLESerial.println(tresholdFlag);
+            BLESerial.print("Sensor value:");
+            BLESerial.println(tmpSensor);
 
 
             }
