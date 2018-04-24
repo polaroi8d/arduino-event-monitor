@@ -135,6 +135,12 @@ void loop() {
         BLESerial.println("The treshold mode is MAX");
         status("ready");
         break;
+      case '/':
+        Log.notice(" TRESHOLD  MODE: LEVEL CHANGE TRIGGERED"CR);
+        tresholdMode = '/';
+        BLESerial.println("The treshold mode is level change triggered.");
+        status("ready");
+        break;
       case 'T':
         freqy = 0;
         recieveBuff = "";
@@ -256,16 +262,11 @@ void loop() {
               }
 
               switch(tresholdMode) {
-                case '-':
+                case '/':
                   if (tmpSensor < sensorTreshold && tresholdFlag == 0) {
-                    //CSINÁLD 
                     Serial.println("SENSOR < TRESHOLD");
                     tresholdFlag = 1;
-                    BLESerial.println("[EDGE]: The sensor value: ");
-                    BLESerial.println(tmpSensor);
                   } else if (tmpSensor >= sensorTreshold && tresholdFlag == 1) {
-                    BLESerial.println("[EDGE]: The sensor value: ");
-                    BLESerial.println(tmpSensor);
                     Serial.println("SENSOR > TRESHOLD");
                     tresholdFlag = 0;
                   } else {
@@ -274,7 +275,13 @@ void loop() {
                   break;
                 case '+':
                   if (tmpSensor > sensorTreshold) {
-                    BLESerial.println("[MAX]: The sensor value: ");
+                    BLESerial.print("[MAX]: The sensor value: ");
+                    BLESerial.println(tmpSensor);
+                  }
+                  break;
+                case '-':
+                  if (tmpSensor < sensorTreshold) {
+                    BLESerial.print("[MIN]: The sensor value: ");
                     BLESerial.println(tmpSensor);
                   }
                   break;
@@ -283,12 +290,6 @@ void loop() {
                   Log.notice("WARNING: TRESHOLD MODE NOT FOUND"CR);
                   break;
               }
-            BLESerial.print("tresholdFlag: ");
-            BLESerial.println(tresholdFlag);
-            BLESerial.print("Sensor value:");
-            BLESerial.println(tmpSensor);
-
-
             }
             
             if (BLESerial.available()) {
