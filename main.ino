@@ -1,7 +1,6 @@
 #include <SoftwareSerial.h>
 #include "Log.h"
 #include "S25FLx.h"
-#include "main.h"
 #include "dht.h"
 
 #define PHOTORESIS_PIN 1
