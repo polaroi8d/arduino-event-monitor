@@ -27,10 +27,19 @@ int hallVal;
 int dhtVal;
 int tmpSensor;
 
+/** FOR TIME VARIABLES */
+unsigned long timeNow = 0;
+unsigned long timeLast = 0;
+unsigned char startingHour = 20;
+unsigned char seconds = 50;
+unsigned char minutes = 0;
+unsigned char hours = 0;
+unsigned char days = 0;
+
 // BLE Serial
 char recieveBuff;
 
-// for time interrupt
+/** TIMER INTERRUPT */
 unsigned long currentMillis;
 unsigned long prevMillis;
 
@@ -72,6 +81,35 @@ void status(char status[]) {
   if (status = "ready") {
     BLESerial.println("STATUS:READY");
   }
+}
+
+void timelapsing() {
+  timeNow = millis()/1000;
+  seconds = timeNow - timeLast;
+  
+  if (seconds == 60) { // MINUTES
+    timeLast = timeNow;
+    minutes += 1;
+  }
+  
+  if (minutes == 60){  // HOURS
+    minutes = 0;
+    hours += 1;
+  }
+  
+  if (hours == 24){ // DAYS
+    hours = 0;
+    days += 1;
+  }
+  
+    Serial.print("The time is:   ");
+    Serial.print(days);
+    Serial.print("/");
+    Serial.print(hours);
+    Serial.print(":");
+    Serial.print(minutes);
+    Serial.print(":");
+    Serial.println(seconds);
 }
 
 void readBLE() {
