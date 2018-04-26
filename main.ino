@@ -1,7 +1,7 @@
 #include <SoftwareSerial.h>
-#include "Log.h"
-#include "S25FLx.h"
-#include "dht.h"
+#include "src/Log.h"
+#include "src/S25FLx.h"
+#include "src/dht.h"
 
 #define PHOTORESIS_PIN 1
 #define DHT11_PIN 4
