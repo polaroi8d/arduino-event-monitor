@@ -42,7 +42,7 @@ boolean tized;
 /** FLASH MEMORY */
 uint8_t writeBuffer[PAGE_SIZE];
 uint8_t readBuffer[PAGE_SIZE];
-int pageReadCounter = 0;
+uint16_t pageReadCounter = 0;
 int memoryIndex = 0;
 int memoryPage = 0;
 
@@ -206,22 +206,29 @@ void loop() {
         status("ready");
         break;
       case 'K': 
-        while(pageReadCounter != memoryPage) {
+        for(pageReadCounter=0; pageReadCounter<=memoryPage; pageReadCounter++) {
+          Serial.print("Before PageCounter: ");
+          Serial.print(pageReadCounter);
+          Serial.print("data position");
+          Serial.print((memoryPage-pageReadCounter));
           Serial.println(F("Read Flash memory..."));
-          FLASH.read((pageReadCounter*PAGE_SIZE), readBuffer, PAGE_SIZE);
+          FLASH.read(0, readBuffer, PAGE_SIZE);
           FLASH.waitforit();
-          while (j < PAGE_SIZE+1)
-            {
-              Serial.print(F("pageReadCounter: "));
-              Serial.print(pageReadCounter);
-              Serial.print(F("["));
-              Serial.print(j);
-              Serial.print(F("] >>> "));
-              Serial.println(readBuffer[j]);
-              BLESerial.println(readBuffer[j]);
-              j++;
-            }
-            pageReadCounter++;
+          Serial.print("After PageCounter: ");
+          Serial.print(pageReadCounter);
+          Serial.print("after position");
+          Serial.print((memoryPage-pageReadCounter));
+          for(j=0;j<=PAGE_SIZE;j++) {
+            // nem tudom miért pageCounter baszakodik ....
+            Serial.print(F("pageReadCounter: "));
+            Serial.print(pageReadCounter);
+            Serial.print(F("["));
+            Serial.print(j);
+            Serial.print(F("] >>> "));
+            Serial.println(readBuffer[j]);
+            BLESerial.println(readBuffer[j]);
+          }
+          pageReadCounter++;
         }
         pageReadCounter = 0;
         status("ready");
@@ -346,7 +353,7 @@ void loop() {
                   BLESerial.println(writeBuffer[memoryIndex]);
                   break;
               }
-              if (memoryIndex > PAGE_SIZE) { // PAGE_SIZE + 1
+              if (memoryIndex >= PAGE_SIZE) { // PAGE_SIZE + 1
                 Serial.print(F("PAGE_SIZE: "));
                 Serial.print(PAGE_SIZE);
                 FLASH.write((memoryPage*PAGE_SIZE), writeBuffer, PAGE_SIZE);
