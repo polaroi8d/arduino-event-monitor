@@ -30,11 +30,12 @@ int tmpSensor;
 /** FOR TIME VARIABLES */
 unsigned long timeNow = 0;
 unsigned long timeLast = 0;
-unsigned char startingHour = 20;
-unsigned char seconds = 50;
+unsigned char startingHour = 0;
+unsigned char seconds = 0;
 unsigned char minutes = 0;
 unsigned char hours = 0;
 unsigned char days = 0;
+boolean tized;
 
 // BLE Serial
 char recieveBuff;
@@ -178,6 +179,29 @@ void loop() {
         tresholdMode = '/';
         BLESerial.println("The treshold mode is level change triggered.");
         status("ready");
+        break;
+      case 'C': // CLOCK TIME PARSING
+        tized = true;
+        while(1){
+          readBLE();
+          if(recieveBuff == '/') { break; }
+          if (tized) { 
+            startingHour = (recieveBuff - '0')*10;  //convert char to digit
+            tized = false;
+          } else { startingHour += (recieveBuff - '0'); }
+        }
+        tized = true;
+        while (1){
+          readBLE();
+          if(recieveBuff == ':') { break; }
+          if (tized) { 
+            minutes = (recieveBuff - '0')*10;  //convert char to digit
+            tized = false;
+          } else { minutes += (recieveBuff - '0'); }
+        }
+        status("ready");
+        BLESerial.println("Time is configured.");
+        Log.notice("THE CONFIGURED TIME IS:  %d:%d"CR, startingHour, minutes);
         break;
       case 'T':
         freqy = 0;
