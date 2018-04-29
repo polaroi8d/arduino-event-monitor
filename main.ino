@@ -8,6 +8,7 @@
 #define HALL_PIN 6
 #define RX_PIN 8
 #define TX_PIN 7
+#define PAGE_SIZE 256
 
 SoftwareSerial BLESerial(TX_PIN, RX_PIN); // TX, RX
 dht DHT;
@@ -38,6 +39,11 @@ unsigned char hours = 0;
 unsigned char days = 0;
 boolean tized;
 
+uint8_t writeBuffer[256];
+uint8_t readBuffer[256];
+int tmpIndex = 0;
+int tmpPage = 0;
+
 // BLE Serial
 char recieveBuff;
 
@@ -48,13 +54,15 @@ unsigned long prevMillis;
 void setup() {
   Serial.begin(9600);
   BLESerial.begin(9600);
+  delay(250);
   SPI.setClockDivider(SPI_CLOCK_DIV2);
   FLASH.waitforit(); // WAIT FOR INIT THE FLASH
 
   pinMode(PHOTORESIS_PIN, INPUT);
   pinMode(HALL_PIN, INPUT);
   pinMode(CS, OUTPUT);  // CHIP SELECT PIN MODE
-
+  FLASH.erase_all();
+  FLASH.waitforit(); // WAIT FOR INIT THE FLASH
   Serial.println(F("MIC is ready to use"));
 }
 
@@ -108,6 +116,10 @@ void loop() {
     Serial.println(recieveBuff);
     int j = 0;
     switch (recieveBuff) {
+      case '_':
+        Serial.println(F("Bluetooth is connected, ready to communicate."));
+        status("ready");
+        break;
       case 'c':
         BLESerial.println(F("******** CONFIG WIZARD: ********"));
         BLESerial.print(F("    TYPE:"));
@@ -189,14 +201,16 @@ void loop() {
         break;
       case 'K':
         Serial.println(F("Read Flash memory..."));
-        uint8_t readBuffer[256];
-        FLASH.read(0, readBuffer, 256);
-        while (j <= 256)
+        FLASH.read(0, readBuffer, PAGE_SIZE);
+        FLASH.waitforit(); 
+        while (j < PAGE_SIZE+1)
         {
           Serial.print("[");
           Serial.print(j);
-          Serial.print("] >>>");
-          Serial.println(readBuffer[j]);
+          Serial.print("] >>> ");
+          Serial.print(readBuffer[j]);
+          Serial.print(" WRITE BUFFER: ");
+          Serial.println(writeBuffer[j]);
           BLESerial.println(readBuffer[j]);
           j++;
         }
@@ -285,10 +299,6 @@ void loop() {
         break;
       case 'r':
         if (sensorMode == 1) { //SAMPLING MODE
-          int tmpIndex = 0;
-          int tmpPage = 0;
-          uint8_t writeBuffer[256];
-
           Serial.println(F("****** START SAMPLING MODE ******"));
           prevMillis = 0;
           while (recieveBuff != 'p') {
@@ -309,7 +319,8 @@ void loop() {
                   BLESerial.println(writeBuffer[tmpIndex]);
                   break;
                 case 2:  // LIGHT SENSOR SETUP
-                   writeBuffer[tmpIndex] = analogRead(PHOTORESIS_PIN);
+                  writeBuffer[tmpIndex] = (analogRead(PHOTORESIS_PIN)/2.8); // need it for to scale
+                  phoVal = analogRead(PHOTORESIS_PIN);
                   BLESerial.print(F("Light: "));
                   BLESerial.println(writeBuffer[tmpIndex]);
                   break;
@@ -320,8 +331,9 @@ void loop() {
                   BLESerial.println(writeBuffer[tmpIndex]);
                   break;
               }
-              if (tmpIndex == 256) {
-                FLASH.write(0, writeBuffer, 256);
+              if (tmpIndex == PAGE_SIZE) {
+                FLASH.write(0, writeBuffer, PAGE_SIZE);
+                FLASH.waitforit();
                 BLESerial.println(F("1 page was written on the Flash memory."));
                 tmpIndex = 0;
                 tmpPage++;
