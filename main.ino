@@ -1,5 +1,5 @@
 #include <SoftwareSerial.h>
-#include "src/Log.h"
+#include <SPI.h>
 #include "src/S25FLx.h"
 #include "src/dht.h"
 
@@ -11,6 +11,7 @@
 
 SoftwareSerial BLESerial(TX_PIN, RX_PIN); // TX, RX
 dht DHT;
+flash FLASH;  //starts flash class and initilzes SPI
 
 /** CONFIG VARIABLES */
 // TODO: This would be saved in the Flash memory 
@@ -45,42 +46,21 @@ unsigned long currentMillis;
 unsigned long prevMillis;
 
 void setup() {
-  Log.begin(LOG_LEVEL_VERBOSE, &Serial);
   Serial.begin(9600);
   BLESerial.begin(9600);
-
-  configInfo();
+  SPI.setClockDivider(SPI_CLOCK_DIV2);
+  FLASH.waitforit(); // WAIT FOR INIT THE FLASH
 
   pinMode(PHOTORESIS_PIN, INPUT);
   pinMode(HALL_PIN, INPUT);
-}
+  pinMode(CS, OUTPUT);  // CHIP SELECT PIN MODE
 
-void configInfo() {
-  Log.notice("******** CONFIG WIZARD: ********"CR);
-  Log.notice("    TYPE: %d"CR, type);
-  Log.notice("    SENSOR MODE: %d"CR, sensorMode);
-  Log.notice("    SENSOR TRESHOLD VALUE: %d"CR, sensorTreshold);
-  Log.notice("    SENSOR TRESHOLD MODE: %c"CR, tresholdMode);
-  Log.notice("    FREQUENCY %d SECOND"CR, (freqy/1000));
-  Log.notice("********************************"CR);
-}
-
-void sendConfig() {
-  BLESerial.println("******** CONFIG WIZARD: ********"CR);
-  BLESerial.print("    TYPE:");
-  BLESerial.println(type);
-  BLESerial.print("    SENSOR MODE:");
-  BLESerial.println(sensorMode);
-  BLESerial.print("    SENSOR TRESHOLD VALUE:");
-  BLESerial.println(sensorTreshold);
-  BLESerial.print("    FREQUENCY (IN SECONDS)");
-  BLESerial.println((freqy/1000));
-  BLESerial.println("********************************"CR);
+  Serial.println(F("MIC is ready to use"));
 }
 
 void status(char status[]) {
   if (status = "ready") {
-    BLESerial.println("STATUS:READY");
+    BLESerial.println(F("STATUS:READY"));
   }
 }
 
@@ -103,81 +83,123 @@ void timelapsing() {
     days += 1;
   }
   
-    Serial.print("The time is:   ");
+    /*Serial.print("The time is:   ");
     Serial.print(days);
     Serial.print("/");
     Serial.print(hours);
     Serial.print(":");
     Serial.print(minutes);
     Serial.print(":");
-    Serial.println(seconds);
-}
+    Serial.println(seconds);*/
+  }
 
 void readBLE() {
   if (BLESerial.available()) {
     recieveBuff = BLESerial.read();  // BLE recieve buffer
-    Log.notice(" RECIEVED BUFFER: %c"CR, recieveBuff);
+    Serial.print(F(" RECIEVED BUFFER: "));
+    Serial.println(recieveBuff);
   }
 }
 
 void loop() {
   if (BLESerial.available()) {
     recieveBuff = BLESerial.read();  // BLE recieve buffer
-
-    Log.notice("[RECIEVED BUFFER: %c]"CR, recieveBuff);
-
+    Serial.print(F("[RECIEVED BUFFER]: "));
+    Serial.println(recieveBuff);
+    int j = 0;
     switch (recieveBuff) {
       case 'c':
-        configInfo();
-        sendConfig();
+        BLESerial.println(F("******** CONFIG WIZARD: ********"));
+        BLESerial.print(F("    TYPE:"));
+        BLESerial.println(type);
+        BLESerial.print(F("    SENSOR MODE:"));
+        BLESerial.println(sensorMode);
+        BLESerial.print(F("    SENSOR TRESHOLD VALUE:"));
+        BLESerial.println(sensorTreshold);
+        BLESerial.print(F("    FREQUENCY (IN SECONDS)"));
+        BLESerial.println((freqy / 1000));
+        BLESerial.println(F("********************************"));
+        Serial.println(F("******** CONFIG WIZARD: ********"));
+        Serial.print(F("    TYPE: "));
+        Serial.println(type);
+        Serial.print(F("    SENSOR MODE: "));
+        Serial.println(sensorMode);
+        Serial.print(F("    SENSOR TRESHOLD VALUE: "));
+        Serial.println(sensorTreshold);
+        Serial.print(F("    SENSOR TRESHOLD MODE: "));
+        Serial.println(tresholdMode);
+        Serial.print(F("    FREQUENCY: "));
+        Serial.println(freqy / 1000);
+        Serial.println(F("********************************"));
         status("ready");
         break;
       case 'w':
-        Log.notice(" SENSOR SET: TEMPERATURE"CR);
+        Serial.println(F(" SENSOR SET: TEMPERATURE"));
         type = 0;
         status("ready");
         break;
       case 'd':
-        Log.notice(" SENSOR SET: DISTANCE"CR);
+        Serial.println(F("SENSOR SET: DISTANCE"));
         type = 1;
         status("ready");
         break;
       case 'l':
-        Log.notice(" SENSOR SET: LIGHT"CR);
+        Serial.println(F("SENSOR SET: LIGHT"));
         type = 2;
         status("ready");
         break;
       case 'h':
-        Log.notice(" SENSOR SET: HUMIDITY"CR);
+        Serial.println(F("SENSOR SET: HUMIITY"));
         type = 3;
         status("ready");
         break;
       case 'e':
-        Log.notice(" MODE: EVENT"CR);
+        Serial.println(F("MODE: EVENT"));
         sensorMode = 2;
         status("ready");
         break;
       case 's':
-        Log.notice(" MODE: SAMPLING"CR);
+        Serial.println(F("MODE: SAMPLING"));
         sensorMode = 1;
         status("ready");
         break;
       case '-':
-        Log.notice(" TRESHOLD MODE: EDGE"CR);
+        Serial.println(F("TRESHOLD MODE: EDGE"));
         tresholdMode = '-';
-        BLESerial.println("The treshold mode is MIN");
+        BLESerial.println(F("The treshold mode is MIN"));
         status("ready");
         break;
       case '+':
-        Log.notice(" TRESHOLD  MODE: MAX"CR);
+        Serial.println(F("TRESHOLD MODE: MAX"));
         tresholdMode = '+';
-        BLESerial.println("The treshold mode is MAX");
+        BLESerial.println(F("The treshold mode is MAX"));
         status("ready");
         break;
       case '/':
-        Log.notice(" TRESHOLD  MODE: LEVEL CHANGE TRIGGERED"CR);
+        Serial.println(F("TRESHOLD MODE: LEVEL CHANGE TRIGGERED"));
         tresholdMode = '/';
-        BLESerial.println("The treshold mode is level change triggered.");
+        BLESerial.println(F("The treshold mode is level change triggered."));
+        status("ready");
+        break;
+      case 'E':
+        FLASH.erase_all();
+        Serial.println(F("Ereased the flash memory."));
+        BLESerial.println(F("Flash memory was ereased. Ready to write."));
+        status("ready");
+        break;
+      case 'K':
+        Serial.println(F("Read Flash memory..."));
+        uint8_t readBuffer[256];
+        FLASH.read(0, readBuffer, 256);
+        while (j <= 256)
+        {
+          Serial.print("[");
+          Serial.print(j);
+          Serial.print("] >>>");
+          Serial.println(readBuffer[j]);
+          BLESerial.println(readBuffer[j]);
+          j++;
+        }
         status("ready");
         break;
       case 'C': // CLOCK TIME PARSING
@@ -185,8 +207,8 @@ void loop() {
         while(1){
           readBLE();
           if(recieveBuff == '/') { break; }
-          if (tized) { 
-            startingHour = (recieveBuff - '0')*10;  //convert char to digit
+          if (tized) {
+            startingHour = (recieveBuff - '0') * 10;  //convert char to digit
             tized = false;
           } else { startingHour += (recieveBuff - '0'); }
         }
@@ -194,118 +216,134 @@ void loop() {
         while (1){
           readBLE();
           if(recieveBuff == ':') { break; }
-          if (tized) { 
-            minutes = (recieveBuff - '0')*10;  //convert char to digit
+          if (tized) {
+            minutes = (recieveBuff - '0') * 10;  //convert char to digit
             tized = false;
           } else { minutes += (recieveBuff - '0'); }
         }
         status("ready");
-        BLESerial.println("Time is configured.");
-        Log.notice("THE CONFIGURED TIME IS:  %d:%d"CR, startingHour, minutes);
+        BLESerial.println(F("Time is configured."));
+        Serial.print(F("Time is configured:"));
+        Serial.print(startingHour);
+        Serial.print(F(":"));
+        Serial.println(minutes);
         break;
       case 'T':
         freqy = 0;
         recieveBuff = "";
-        // recieve frequency -> magic parser 
-        while(recieveBuff != ':'){
+        // recieve frequency -> magic parser
+        while (recieveBuff != ':') {
           readBLE();
-          if(recieveBuff == ':'){
+          if (recieveBuff == ':') {
             break;
           }
-          if((recieveBuff - '0') == 0) {
+          if ((recieveBuff - '0') == 0) {
             freqy *= 10;
           } else {
             freqy += (recieveBuff - '0');
           }
         }
-        Log.notice(" FREQUENCY: %d"CR, freqy);
+        Serial.print(F("FREQUENCY: "));
+        Serial.println(freqy);
         status("ready");
         break;
       case 'p':
-        Log.notice(" PROGRAM STOPPED"CR);
+        Serial.println(F("PROGRAM STOPPED"));
         status("ready");
         break;
       case 'q':
-        Log.notice("TRESHOLD SAMPLING IS PROCCESED"CR);
-        switch(type) {
+        Serial.println(F("TRESHOLD SAMPING IS PROCESSED"));
+        switch (type) {
           case 0: // TEMPERATURE SENSOR SETUP
             DHT.read11(DHT11_PIN);
             sensorTreshold = DHT.temperature;
-            BLESerial.print("Temperature: ");
+            BLESerial.print(F("Temperature: "));
             break;
           case 1: // DISTANCE SENSOR SETUP
             sensorTreshold = digitalRead(HALL_PIN);
-            BLESerial.print("Hall sensor: ");
+            BLESerial.print(F("Hall sensor: "));
             break;
           case 2:  // LIGHT SENSOR SETUP
             sensorTreshold = analogRead(PHOTORESIS_PIN);
-            BLESerial.print("Light: ");
+            BLESerial.print(F("Light: "));
             break;
           case 3: // HUMIDITY SENSOR SETUP
             DHT.read11(DHT11_PIN);
             sensorTreshold = DHT.humidity;
-            BLESerial.print("Humidity: ");
+            BLESerial.print(F("Humidity: "));
             break;
           default:
-            Log.warning("This sensor type is not defined yet"CR);
+            Serial.println(F("This sensor type is not defined yet"));
             break;
         }
         BLESerial.println(sensorTreshold);
-        
+
         // The duplicated for the treshold placer
-        BLESerial.print("SENSOR TRESHOLD:");
+        BLESerial.print(F("SENSOR TRESHOLD:"));
         BLESerial.println(sensorTreshold);
         status("ready");
         break;
       case 'r':
         if (sensorMode == 1) { //SAMPLING MODE
-          configInfo();
-          Log.notice("****** START SAMPLING MODE ******"CR);
+          int tmpIndex = 0;
+          int tmpPage = 0;
+          uint8_t writeBuffer[256];
+
+          Serial.println(F("****** START SAMPLING MODE ******"));
           prevMillis = 0;
           while (recieveBuff != 'p') {
             currentMillis = millis();
             if (currentMillis - prevMillis >= freqy ) {
               prevMillis = currentMillis;
-              Log.notice("Interrupt occured."CR);
+              Serial.println(F("Interrupt occured"));
               switch (type) {
-                // TODO IMPLEMENT THE FLASH MEMORY SAVE 
                 case 0: // TEMPERATURE SENSOR SETUP
                   DHT.read11(DHT11_PIN);
-                  BLESerial.print("Temperature: ");
+                  writeBuffer[tmpIndex] = DHT.temperature;
+                  BLESerial.print(F("Temperature: "));
                   BLESerial.println(DHT.temperature);
                   break;
                 case 1: // DISTANCE SENSOR SETUP
-                  hallVal = digitalRead(HALL_PIN);
-                  BLESerial.print("Hall sensor: ");
-                  BLESerial.println(hallVal);
+                  writeBuffer[tmpIndex] = digitalRead(HALL_PIN);
+                  BLESerial.print(F("Hall sensor: "));
+                  BLESerial.println(writeBuffer[tmpIndex]);
                   break;
                 case 2:  // LIGHT SENSOR SETUP
-                  phoVal = analogRead(PHOTORESIS_PIN);
-                  BLESerial.print("Light: ");
-                  BLESerial.println(phoVal);
+                   writeBuffer[tmpIndex] = analogRead(PHOTORESIS_PIN);
+                  BLESerial.print(F("Light: "));
+                  BLESerial.println(writeBuffer[tmpIndex]);
                   break;
                 case 3: // HUMIDITY SENSOR SETUP
                   DHT.read11(DHT11_PIN);
-                  BLESerial.print("Humidity: ");
-                  BLESerial.println(DHT.humidity);
+                  writeBuffer[tmpIndex] = DHT.humidity;
+                  BLESerial.print(F("Humidity: "));
+                  BLESerial.println(writeBuffer[tmpIndex]);
                   break;
               }
-           }
-           if (BLESerial.available()) {
+              if (tmpIndex == 256) {
+                FLASH.write(0, writeBuffer, 256);
+                BLESerial.println(F("1 page was written on the Flash memory."));
+                tmpIndex = 0;
+                tmpPage++;
+              } else {
+                tmpIndex++;
+              }
+            }
+            if (BLESerial.available()) {
               recieveBuff = BLESerial.read();  // BLE recieve buffer
-           }
+            }
           }
           status("ready");
         } else if (sensorMode == 2) {
-          Log.notice("****** START EVENT BASE MODE ******"CR);
-          BLESerial.print("The treshold sensore value:");
+          Serial.println(F("****** START EVENT BASE MODE ******"));
+          BLESerial.print(F("The treshold sensore value:"));
           BLESerial.println(sensorTreshold);
           prevMillis = 0;
           while (recieveBuff != 'p') {
             currentMillis = millis();
             if (currentMillis - prevMillis >= freqy ) {
               prevMillis = currentMillis;
-              // Log.notice("Interrupt occured."CR);
+              Serial.println(F("Interrupt occured."));
               switch (type) {
                 case 0: // WEATHER SENSOR SETUP
                   DHT.read11(DHT11_PIN);
@@ -323,48 +361,49 @@ void loop() {
                   break;
               }
 
-              switch(tresholdMode) {
+              switch (tresholdMode) {
                 case '/':
                   if (tmpSensor < sensorTreshold && tresholdFlag == 0) {
-                    Serial.println("SENSOR < TRESHOLD");
+                    Serial.println(F("SENSOR < TRESHOLD"));
                     tresholdFlag = 1;
                   } else if (tmpSensor >= sensorTreshold && tresholdFlag == 1) {
-                    Serial.println("SENSOR > TRESHOLD");
+                    Serial.println(F("SENSOR > TRESHOLD"));
                     tresholdFlag = 0;
                   } else {
-                    Serial.println("No changes...");
-                    }
+                    Serial.println(F("No changes..."));
+                  }
                   break;
                 case '+':
                   if (tmpSensor > sensorTreshold) {
-                    BLESerial.print("[MAX]: The sensor value: ");
+                    BLESerial.print(F("[MAX]: The sensor value: "));
                     BLESerial.println(tmpSensor);
                   }
                   break;
                 case '-':
                   if (tmpSensor < sensorTreshold) {
-                    BLESerial.print("[MIN]: The sensor value: ");
+                    BLESerial.print(F("[MIN]: The sensor value: "));
                     BLESerial.println(tmpSensor);
                   }
                   break;
                 default:
-                  BLESerial.print("There is no such a treshold mode.");
-                  Log.notice("WARNING: TRESHOLD MODE NOT FOUND"CR);
+                  BLESerial.print(F("There is no such a treshold mode."));
+                  Serial.println(F("Warning: Treshold mode not found!"));
                   break;
               }
             }
-            
+
             if (BLESerial.available()) {
-                recieveBuff = BLESerial.read();  // BLE recieve buffer
+              recieveBuff = BLESerial.read();  // BLE recieve buffer
             }
           }
-         status("ready");
+          status("ready");
         } else {
-          BLESerial.print("Other modes not ready now...");
+          BLESerial.print(F("Other modes not ready now..."));
         }
         break;
-    default:
-        Log.notice(" DEFAULT RECIEVED BUFFER: %c"CR, recieveBuff);
+      default:
+        Serial.print(F("DEFAULT RECIEVED BUFFER: "));
+        Serial.println(recieveBuff);
         break;
     }
   }
