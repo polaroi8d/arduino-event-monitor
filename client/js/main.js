@@ -189,7 +189,7 @@ terminal.receive = function(data) {
   if (data.includes("STATUS:READY")) {
     statusReady();
   } else if (data.includes("SENSOR:TRESHOLD")){
-      var tresholdValue = data.split(':');
+      var tresholdValue = data.split('/');
       document.getElementById("tresholdValue").value = tresholdValue[1];
   } else if (data.includes("DATA:TRANSFER")) {
       console.log("Data transfer is coming...");

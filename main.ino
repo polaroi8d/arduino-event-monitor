@@ -8,7 +8,7 @@
 #define HALL_PIN 6
 #define RX_PIN 8
 #define TX_PIN 7
-#define PAGE_SIZE 256
+#define PAGE_SIZE 16
 
 SoftwareSerial BLESerial(TX_PIN, RX_PIN); // TX, RX
 dht DHT;
@@ -22,6 +22,7 @@ unsigned char tresholdMode;
 unsigned short sensorTreshold;
 unsigned long freqy;
 byte tresholdFlag = 0;
+boolean writerFlag = false;
 
 /** SENSORS  */
 int phoVal;
@@ -185,20 +186,20 @@ void loop() {
         status("ready");
         break;
       case '-':
-        Serial.println(F("TRESHOLD MODE: EDGE"));
-        tresholdMode = '-';
+        Serial.println(F("TRESHOLD MODE: MIN"));
+        tresholdMode = 1;
         BLESerial.println(F("The treshold mode is MIN"));
         status("ready");
         break;
       case '+':
         Serial.println(F("TRESHOLD MODE: MAX"));
-        tresholdMode = '+';
+        tresholdMode = 2;
         BLESerial.println(F("The treshold mode is MAX"));
         status("ready");
         break;
       case '/':
         Serial.println(F("TRESHOLD MODE: LEVEL CHANGE TRIGGERED"));
-        tresholdMode = '/';
+        tresholdMode = 3;
         BLESerial.println(F("The treshold mode is level change triggered."));
         status("ready");
         break;
@@ -210,7 +211,6 @@ void loop() {
         break;
       case 'K':
         BLESerial.print("DATA:TRANSFER");
-        memset(readBuffer, 0, 255);
         for(pageReadCounter=0; pageReadCounter<memoryPage; pageReadCounter++) {
           FLASH.read((pageReadCounter*PAGE_SIZE), readBuffer, PAGE_SIZE);
           FLASH.waitforit();
@@ -299,7 +299,7 @@ void loop() {
         status("ready");
         break;
       case 'q':
-        Serial.println(F("TRESHOLD SAMPING IS PROCESSED"));
+        Serial.println(F("TRESHOLD SAMPLING IS PROCESSED"));
         switch (type) {
           case 0: // TEMPERATURE SENSOR SETUP
             DHT.read11(DHT11_PIN);
@@ -311,7 +311,7 @@ void loop() {
             BLESerial.print(F("Hall sensor: "));
             break;
           case 2:  // LIGHT SENSOR SETUP
-            sensorTreshold = analogRead(PHOTORESIS_PIN);
+            sensorTreshold = (analogRead(PHOTORESIS_PIN)/2.8);
             BLESerial.print(F("Light: "));
             break;
           case 3: // HUMIDITY SENSOR SETUP
@@ -326,7 +326,7 @@ void loop() {
         BLESerial.println(sensorTreshold);
 
         // The duplicated for the treshold placer
-        BLESerial.print(F("SENSOR:TRESHOLD"));
+        BLESerial.print(F("SENSOR:TRESHOLD/"));
         BLESerial.println(sensorTreshold);
         status("ready");
         break;
@@ -353,7 +353,7 @@ void loop() {
                   break;
                 case 2:  // LIGHT SENSOR SETUP
                   writeBuffer[memoryIndex] = (analogRead(PHOTORESIS_PIN)/2.8); // need it for to scale
-                  phoVal = analogRead(PHOTORESIS_PIN);
+                  phoVal = (analogRead(PHOTORESIS_PIN)/2.8);
                   BLESerial.print(F("Light: "));
                   BLESerial.println(writeBuffer[memoryIndex]);
                   break;
@@ -390,6 +390,25 @@ void loop() {
             if (currentMillis - prevMillis >= freqy ) {
               prevMillis = currentMillis;
               Serial.println(F("Interrupt occured."));
+
+              // WRITE DATA IF WRITER FLAG CHANGED
+              if (writerFlag) {
+                if (memoryIndex >= PAGE_SIZE-1) { // PAGE_SIZE + 1
+                  FLASH.write((memoryPage*PAGE_SIZE), writeBuffer, PAGE_SIZE);
+                  FLASH.waitforit();
+                  Serial.println(F("1 page was written on the Flash memory."));
+                  BLESerial.println(F("1 page was written on the Flash memory."));
+                  memoryIndex = 0;
+                  memoryPage++;
+                } else {
+                  memoryIndex += 2;
+                  Serial.print(F("memory index: "));
+                  Serial.println(memoryIndex);
+                }
+                writerFlag = false;
+              }
+
+              // get tmpSensor the right value depend on the picked sensor 
               switch (type) {
                 case 0: // WEATHER SENSOR SETUP
                   DHT.read11(DHT11_PIN);
@@ -399,7 +418,7 @@ void loop() {
                   tmpSensor = digitalRead(HALL_PIN);
                   break;
                 case 2:  // LIGHT SENSOR SETUP
-                  tmpSensor = analogRead(PHOTORESIS_PIN);
+                  tmpSensor = (analogRead(PHOTORESIS_PIN)/2.8);
                   break;
                 case 3:
                   DHT.read11(DHT11_PIN);
@@ -408,24 +427,30 @@ void loop() {
               }
 
               switch (tresholdMode) {
-                case '/':
+                case 3:
                   if (tmpSensor < sensorTreshold && tresholdFlag == 0) {
                     Serial.println(F("SENSOR < TRESHOLD"));
+                    writeBuffer[memoryIndex] = tmpSensor;
+                    writeBuffer[memoryIndex+1] = 'L';
                     tresholdFlag = 1;
+                    writerFlag = true;
                   } else if (tmpSensor >= sensorTreshold && tresholdFlag == 1) {
                     Serial.println(F("SENSOR > TRESHOLD"));
+                    writeBuffer[memoryIndex] = tmpSensor;
+                    writeBuffer[memoryIndex+1] = 'F';
                     tresholdFlag = 0;
+                    writerFlag = true;
                   } else {
                     Serial.println(F("No changes..."));
                   }
                   break;
-                case '+':
+                case 2:
                   if (tmpSensor > sensorTreshold) {
                     BLESerial.print(F("[MAX]: The sensor value: "));
                     BLESerial.println(tmpSensor);
                   }
                   break;
-                case '-':
+                case 1:
                   if (tmpSensor < sensorTreshold) {
                     BLESerial.print(F("[MIN]: The sensor value: "));
                     BLESerial.println(tmpSensor);
