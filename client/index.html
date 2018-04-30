@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="msapplication-starturl" content="./">
+    <meta name="description" content="BLE Event listener">
+
+    <title>Event Listener BLE module</title>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+
+</head>
+<body>
+    <div class="app">
+        <div class="toolbar">
+            <span class="device-title">Device name:</span><div id="device-name" class="name">Device not connected. Click on the BLE icon on the top of the page.</div>
+            <div class="buttons">
+                <button id="connect" type="button" aria-label="Connect">
+                <i class="fa fa-bluetooth-b" aria-hidden="true"></i>
+                </button>
+                <!-- <button id="disconnect" type="button" aria-label="Disconnect">
+                </button> -->
+            </div>
+        </div>
+        <hr>
+
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="status-bar-wait" id="statusBar">Device not connected.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                <div class="col-md-3">
+                    <button type="button" class="sensor-button btn btn-info" id="sendTypeTemperature">
+                    <i class="fa fa-thermometer-half"></i><br> TEMPERATURE </button>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="sensor-button btn btn-info" id="sendTypeHumidity">
+                    <i class="fa fa-tint"></i><br> HUMIDITY </button>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="sensor-button btn btn-info" id="sendTypeDistance">
+                    <i class="fa fa-arrows-h"></i><br> DISTANCE </button>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="sensor-button btn btn-info" id="sendTypeLight">
+                    <i class="fa fa-lightbulb-o"></i><br> LIGHT </button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <button type="button" class="sensor-button btn btn-info" id="sendModeEvent">
+                        <i class="fa fa-calendar"></i><br> EVENT BASED
+                    </button>
+                    <div class="row">
+                        <div class="col-md-2">
+                            <input name="" tpye="number" min="" max="" class="time-input" id="tresholdValue"></input>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="sensor-button btn btn-info" id="sendEdgeMode">LVL  <i class="fa fa-exchange"></i></button>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="sensor-button btn btn-info" id="sendtresholdModeMax">MAX</button>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="sensor-button btn btn-info" id="sendtresholdModeMin">MIN</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <button type="button" class="sensor-button btn btn-info" id="sendModeSampling">
+                        <i class="fa fa-clock-o"></i><br> TIME SAMPLING
+                    </button>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <button type="button" class="sensor-button btn btn-info" id="sendEdgeSensorValue">MEASURE</button>
+                        </div>
+                        <div class="col-md-4">
+                            <input name="timeValue" tpye="number" class="time-input" id="timeValue"></input>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="times sensor-button btn btn-info" onclick="sendTimeValue()">Send (sec)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-1">
+                    <input name="timeValue" tpye="number" class="time-input" id="clockHours"></input>
+                </div>
+                <div class="col-md-1">
+                    <input name="timeValue" tpye="number" class="time-input" id="clockMinutes"></input>
+                </div>
+                <div class="col-md-4">
+                    <button class="sensor-button btn btn-info" type="button" onclick="sendClock()"><i class="fa fa-clock-o"></i></button>
+                </div>
+                <div class="col-md-2">
+                    <button class="sensor-button btn btn-info" type="button" onclick="sendK()">EXPORT</button>
+                </div>
+                <div class="col-md-2">
+                    <button class="sensor-button btn btn-info" type="button" onclick="downloadData()"><i class="fa fa-download"></i></button>
+                </div>
+                <div class="col-md-2">
+                    <button class="sensor-button btn btn-info" type="button" onclick="sendEreaseFlag()">FORMAT</button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <button type="button" class="btn btn-success control-buttons" id="startProgram"><i class="fa fa-play"></i>  </button>
+                </div>
+                <div class="col-md-6">
+                    <button type="button" class="btn btn-warning control-buttons" id="stopProgram"><i class="fa fa-pause"></i>  </button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="btn config-title" type="button" id="getConfigInfo">CONFIGURATION</div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <textarea id="console" class="console"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/BluetoothTerminal.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/companion.js" data-service-worker="sw.js"></script>
+
+</body>
+</html>
