@@ -1,4 +1,1 @@
-# EVENTE-SAMPLER-DRAGON
-
-A munka célja egy mikrovezérlőre épülő kompakt elemes modul kifejlesztése, mely alkalmas néhány különböző szenzor – pl. fotoellenállás/fotodióda, termisztor, páratartalom-szenzor - jelének mérésére, a jelek változásainak detektálására és a jelek megadott időnkénti mintáinak tárolására. Az eszköznek bluetooth interfészen keresztül konfigurálhatónak kell lennie, a mért és tárolt adatoknak is kiolvashatónak kell lennie. Az eszköz helyiségekben, térrészekben előforduló jelek megfigyelését, ezek változásaival kapcsolatos események idejének rögzítését, statisztikák elkészítését segíti elsősorban a hatékonyság növelése érdekében. 
-A hallgató feladata az elektronikai tervezésben való részvétel, a mikrovezérlő programjának megírása, a személyi számítógépen vagy mobiltelefonon futó vezérlő program elkészítése. 
+# Arduino event monitor
