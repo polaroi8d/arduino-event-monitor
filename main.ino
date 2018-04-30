@@ -8,7 +8,7 @@
 #define HALL_PIN 6
 #define RX_PIN 8
 #define TX_PIN 7
-#define PAGE_SIZE 16
+#define PAGE_SIZE 256
 
 SoftwareSerial BLESerial(TX_PIN, RX_PIN); // TX, RX
 dht DHT;
@@ -42,7 +42,6 @@ boolean tized;
 /** FLASH MEMORY */
 uint8_t writeBuffer[PAGE_SIZE];
 uint8_t readBuffer[PAGE_SIZE];
-uint16_t pageReadCounter = 0;
 int memoryIndex = 0;
 int memoryPage = 0;
 
@@ -93,14 +92,14 @@ void timelapsing() {
     days += 1;
   }
   
-    /*Serial.print("The time is:   ");
+    Serial.print(F("The time is:   "));
     Serial.print(days);
-    Serial.print("/");
+    Serial.print(F("/"));
     Serial.print(hours);
-    Serial.print(":");
+    Serial.print(F(":"));
     Serial.print(minutes);
-    Serial.print(":");
-    Serial.println(seconds);*/
+    Serial.print(F(":"));
+    Serial.println(seconds);
   }
 
 void readBLE() {
@@ -112,6 +111,8 @@ void readBLE() {
 }
 
 void loop() {
+  int pageReadCounter = 0;
+  
   if (BLESerial.available()) {
     recieveBuff = BLESerial.read();  // BLE recieve buffer
     Serial.print(F("[RECIEVED BUFFER]: "));
@@ -148,6 +149,8 @@ void loop() {
         Serial.println(memoryIndex);
         Serial.print(F("    USED MEMORY PAGE: "));
         Serial.println(memoryPage);
+        Serial.print(F("    PAGE READ COUNTER: "));
+        Serial.println(pageReadCounter);
         Serial.println(F("********************************"));
         status("ready");
         break;
@@ -205,32 +208,45 @@ void loop() {
         BLESerial.println(F("Flash memory was ereased. Ready to write."));
         status("ready");
         break;
-      case 'K': 
-        for(pageReadCounter=0; pageReadCounter<=memoryPage; pageReadCounter++) {
-          Serial.print("Before PageCounter: ");
-          Serial.print(pageReadCounter);
-          Serial.print("data position");
-          Serial.print((memoryPage-pageReadCounter));
-          Serial.println(F("Read Flash memory..."));
-          FLASH.read(0, readBuffer, PAGE_SIZE);
+      case 'K':
+        BLESerial.print("DATA:TRANSFER");
+        memset(readBuffer, 0, 255);
+        for(pageReadCounter=0; pageReadCounter<memoryPage; pageReadCounter++) {
+          FLASH.read((pageReadCounter*PAGE_SIZE), readBuffer, PAGE_SIZE);
           FLASH.waitforit();
-          Serial.print("After PageCounter: ");
+          Serial.print(F("pageCounter: "));
           Serial.print(pageReadCounter);
-          Serial.print("after position");
-          Serial.print((memoryPage-pageReadCounter));
-          for(j=0;j<=PAGE_SIZE;j++) {
-            // nem tudom miért pageCounter baszakodik ....
-            Serial.print(F("pageReadCounter: "));
-            Serial.print(pageReadCounter);
-            Serial.print(F("["));
+          Serial.print(F(" | memoryPage: "));
+          Serial.print(memoryPage);
+          Serial.print(" | (pageReadCounter*PAGE_SIZE): ");
+          Serial.println((pageReadCounter*PAGE_SIZE));
+          for(j=0;j<PAGE_SIZE;j++) {
+            Serial.print(F("BUFFER["));
             Serial.print(j);
-            Serial.print(F("] >>> "));
+            Serial.print(F("]: "));
             Serial.println(readBuffer[j]);
+            BLESerial.print("D:");
             BLESerial.println(readBuffer[j]);
+            delay(50);
           }
-          pageReadCounter++;
+        }
+        if (memoryIndex != 0) {
+          FLASH.read((pageReadCounter*PAGE_SIZE), readBuffer, memoryIndex);
+          FLASH.waitforit();
+          Serial.println(F("Reminder transfer:"));
+          for(j=0;j<=memoryIndex;j++) {
+            Serial.print(F("Export the BUFFER["));
+            Serial.print(j);
+            Serial.print(F("]: "));
+            Serial.println(readBuffer[j]);
+            BLESerial.print("D:");
+            BLESerial.println(readBuffer[j]);
+            delay(50);
+          }
         }
         pageReadCounter = 0;
+        Serial.println(F("Data transfer was finished."));
+        BLESerial.print("DATA:END");
         status("ready");
         break;
       case 'C': // CLOCK TIME PARSING
@@ -310,7 +326,7 @@ void loop() {
         BLESerial.println(sensorTreshold);
 
         // The duplicated for the treshold placer
-        BLESerial.print(F("SENSOR TRESHOLD:"));
+        BLESerial.print(F("SENSOR:TRESHOLD"));
         BLESerial.println(sensorTreshold);
         status("ready");
         break;
@@ -322,12 +338,7 @@ void loop() {
             currentMillis = millis();
             if (currentMillis - prevMillis >= freqy ) {
               prevMillis = currentMillis;
-              Serial.print(F("Interrupt occured, memoryIndex: "));
-              Serial.print(memoryIndex);
-              Serial.print(F("   memoryPage: "));
-              Serial.print(memoryPage);
-              Serial.print(F("PAGE_SIZE: "));
-              Serial.println(PAGE_SIZE);
+              Serial.println(F("Interrupt occured."));
               switch (type) {
                 case 0: // TEMPERATURE SENSOR SETUP
                   DHT.read11(DHT11_PIN);
@@ -353,11 +364,10 @@ void loop() {
                   BLESerial.println(writeBuffer[memoryIndex]);
                   break;
               }
-              if (memoryIndex >= PAGE_SIZE) { // PAGE_SIZE + 1
-                Serial.print(F("PAGE_SIZE: "));
-                Serial.print(PAGE_SIZE);
+              if (memoryIndex == PAGE_SIZE-1) { // PAGE_SIZE + 1
                 FLASH.write((memoryPage*PAGE_SIZE), writeBuffer, PAGE_SIZE);
                 FLASH.waitforit();
+                Serial.println(F("1 page was written on the Flash memory."));
                 BLESerial.println(F("1 page was written on the Flash memory."));
                 memoryIndex = 0;
                 memoryPage++;
