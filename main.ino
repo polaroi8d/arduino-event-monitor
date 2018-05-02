@@ -15,7 +15,6 @@ dht DHT;
 flash FLASH;  //starts flash class and initilzes SPI
 
 /** CONFIG */
-// TODO: This would be saved in the Flash memory 
 unsigned char type;
 unsigned char sensorMode;
 unsigned char tresholdMode;
@@ -74,34 +73,25 @@ void status(char status[]) {
   }
 }
 
-void timelapsing() {
+void getTime() {
   timeNow = millis()/1000;
   seconds = timeNow - timeLast;
-  
+
   if (seconds == 60) { // MINUTES
     timeLast = timeNow;
     minutes += 1;
   }
-  
+
   if (minutes == 60){  // HOURS
     minutes = 0;
     hours += 1;
   }
-  
+
   if (hours == 24){ // DAYS
     hours = 0;
     days += 1;
   }
-  
-    Serial.print(F("The time is:   "));
-    Serial.print(days);
-    Serial.print(F("/"));
-    Serial.print(hours);
-    Serial.print(F(":"));
-    Serial.print(minutes);
-    Serial.print(F(":"));
-    Serial.println(seconds);
-  }
+}
 
 void readBLE() {
   if (BLESerial.available()) {
@@ -113,7 +103,7 @@ void readBLE() {
 
 void loop() {
   int pageReadCounter = 0;
-  
+
   if (BLESerial.available()) {
     recieveBuff = BLESerial.read();  // BLE recieve buffer
     Serial.print(F("[RECIEVED BUFFER]: "));
@@ -221,7 +211,7 @@ void loop() {
           Serial.print(" | (pageReadCounter*PAGE_SIZE): ");
           Serial.println((pageReadCounter*PAGE_SIZE));
           for(j=0;j<PAGE_SIZE;j++) {
-            Serial.print(F("BUFFER["));
+            Serial.print(F("Export the BUFFER["));
             Serial.print(j);
             Serial.print(F("]: "));
             Serial.println(readBuffer[j]);
@@ -235,7 +225,7 @@ void loop() {
           FLASH.waitforit();
           Serial.println(F("Reminder transfer:"));
           for(j=0;j<=memoryIndex;j++) {
-            Serial.print(F("Export the BUFFER["));
+            Serial.print(F("Export the remaining BUFFER["));
             Serial.print(j);
             Serial.print(F("]: "));
             Serial.println(readBuffer[j]);
@@ -244,7 +234,7 @@ void loop() {
             delay(50);
           }
         }
-        pageReadCounter = 0;
+        pageReadCounter = 0; // set defult paramaters  
         Serial.println(F("Data transfer was finished."));
         BLESerial.print("DATA:END");
         status("ready");
@@ -331,6 +321,8 @@ void loop() {
         status("ready");
         break;
       case 'r':
+        memoryIndex = 0;  // set defult paramaters 
+        memoryPage = 0;   // set defult paramaters 
         if (sensorMode == 1) { //SAMPLING MODE
           Serial.println(F("****** START SAMPLING MODE ******"));
           prevMillis = 0;
