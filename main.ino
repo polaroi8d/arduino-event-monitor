@@ -73,6 +73,36 @@ void status(char status[]) {
   }
 }
 
+void printConfig() {
+        BLESerial.println(F("******** CONFIG WIZARD: ********"));
+        BLESerial.print(F("    TYPE:"));
+        BLESerial.println(type);
+        BLESerial.print(F("    SENSOR MODE:"));
+        BLESerial.println(sensorMode);
+        BLESerial.print(F("    SENSOR TRESHOLD VALUE:"));
+        BLESerial.println(sensorTreshold);
+        BLESerial.print(F("    FREQUENCY (IN SECONDS)"));
+        BLESerial.println((freqy / 1000));
+        BLESerial.println(F("********************************"));
+        Serial.println(F("******** CONFIG WIZARD: ********"));
+        Serial.print(F("    TYPE: "));
+        Serial.println(type);
+        Serial.print(F("    SENSOR MODE: "));
+        Serial.println(sensorMode);
+        Serial.print(F("    SENSOR TRESHOLD VALUE: "));
+        Serial.println(sensorTreshold);
+        Serial.print(F("    SENSOR TRESHOLD MODE: "));
+        Serial.println(tresholdMode);
+        Serial.print(F("    FREQUENCY: "));
+        Serial.println(freqy / 1000);
+        Serial.print(F("    USED MEMORY INDEX: "));
+        Serial.println(memoryIndex);
+        Serial.print(F("    USED MEMORY PAGE: "));
+        Serial.println(memoryPage);
+        Serial.println(F("********************************"));
+        status("ready");
+}
+
 void getTime() {
   timeNow = millis()/1000;
   seconds = timeNow - timeLast;
@@ -115,35 +145,7 @@ void loop() {
         status("ready");
         break;
       case 'c':
-        BLESerial.println(F("******** CONFIG WIZARD: ********"));
-        BLESerial.print(F("    TYPE:"));
-        BLESerial.println(type);
-        BLESerial.print(F("    SENSOR MODE:"));
-        BLESerial.println(sensorMode);
-        BLESerial.print(F("    SENSOR TRESHOLD VALUE:"));
-        BLESerial.println(sensorTreshold);
-        BLESerial.print(F("    FREQUENCY (IN SECONDS)"));
-        BLESerial.println((freqy / 1000));
-        BLESerial.println(F("********************************"));
-        Serial.println(F("******** CONFIG WIZARD: ********"));
-        Serial.print(F("    TYPE: "));
-        Serial.println(type);
-        Serial.print(F("    SENSOR MODE: "));
-        Serial.println(sensorMode);
-        Serial.print(F("    SENSOR TRESHOLD VALUE: "));
-        Serial.println(sensorTreshold);
-        Serial.print(F("    SENSOR TRESHOLD MODE: "));
-        Serial.println(tresholdMode);
-        Serial.print(F("    FREQUENCY: "));
-        Serial.println(freqy / 1000);
-        Serial.print(F("    USED MEMORY INDEX: "));
-        Serial.println(memoryIndex);
-        Serial.print(F("    USED MEMORY PAGE: "));
-        Serial.println(memoryPage);
-        Serial.print(F("    PAGE READ COUNTER: "));
-        Serial.println(pageReadCounter);
-        Serial.println(F("********************************"));
-        status("ready");
+        printConfig();
         break;
       case 'w':
         Serial.println(F(" SENSOR SET: TEMPERATURE"));
