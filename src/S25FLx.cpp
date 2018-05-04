@@ -171,6 +171,8 @@ void flash::read(unsigned long loc, uint8_t* array, unsigned long length){
 void flash::write(unsigned long loc, uint8_t* array, unsigned long length){
 
 if (length>255){
+  Serial.println("Page is higher than 255");
+
 unsigned long reps=length>>8;
 unsigned long length1;
 unsigned long array_count;
@@ -235,6 +237,8 @@ if (remainer0==0){break;}
 }
 
 if (length<=255){
+  Serial.println("Page is lower than 255");
+
 if (((loc & 0xff)!=0) | ((loc & 0xff)<length)){
 byte remainer = loc & 0xff;
 byte length1 =256-remainer;
@@ -272,14 +276,14 @@ unsigned long page2_loc = loc+length1;
 
   digitalWrite(CS,HIGH);
   waitforit();
-//Serial.println("//////////");  
-//Serial.print("remainer ");Serial.println(remainer);
+  Serial.println(F("//////////"));  
+  Serial.print(F("remainer "));Serial.println(remainer);
 
-//Serial.print("length1 ");Serial.println(length1);
-//Serial.print("length2 ");Serial.println(length2);
-//Serial.print("page1_loc ");Serial.println(page1_loc);
-//Serial.print("page2_loc ");Serial.println(page2_loc);
-//Serial.println("//////////");
+  Serial.print(F("length1 "));Serial.println(length1);
+  Serial.print(F("length2 "));Serial.println(length2);
+  Serial.print(F("page1_loc "));Serial.println(page1_loc);
+  Serial.print(F("page2_loc "));Serial.println(page2_loc);
+  Serial.println(F("//////////"));
 
 
 }

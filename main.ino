@@ -22,12 +22,7 @@ unsigned short sensorTreshold;
 unsigned long freqy;
 byte tresholdFlag = 0;
 boolean writerFlag = false;
-
-/** SENSORS  */
-int phoVal;
-int hallVal;
-int dhtVal;
-int tmpSensor;
+uint8_t tmpSensor;
 
 /** TIME */
 unsigned long timeNow = 0;
@@ -40,8 +35,8 @@ unsigned char days = 0;
 boolean tized;
 
 /** FLASH MEMORY */
-uint8_t writeBuffer[PAGE_SIZE];
-uint8_t readBuffer[PAGE_SIZE];
+uint8_t writeBuffer[PAGE_SIZE+1];
+uint8_t readBuffer[PAGE_SIZE+1];
 int memoryIndex = 0;
 int memoryPage = 0;
 
@@ -62,8 +57,6 @@ void setup() {
   pinMode(PHOTORESIS_PIN, INPUT);
   pinMode(HALL_PIN, INPUT);
   pinMode(CS, OUTPUT);  // CHIP SELECT PIN MODE
-  FLASH.erase_all();
-  FLASH.waitforit(); // WAIT FOR INIT THE FLASH
   Serial.println(F("MIC is ready to use"));
 }
 
@@ -195,16 +188,32 @@ void loop() {
         BLESerial.println(F("The treshold mode is level change triggered."));
         status("ready");
         break;
-      case 'E':
+      case 'E':  // Format the Flash memory 
         FLASH.erase_all();
+        memoryIndex = 0;
+        memoryPage = 0;
+        pageReadCounter = 0;
         Serial.println(F("Ereased the flash memory."));
         BLESerial.println(F("Flash memory was ereased. Ready to write."));
         status("ready");
         break;
       case 'K':
         BLESerial.print("DATA:TRANSFER");
+        if (memoryPage == 0 && memoryIndex == 0) {
+          BLESerial.println("No data found!");
+        }
         for(pageReadCounter=0; pageReadCounter<memoryPage; pageReadCounter++) {
-          FLASH.read((pageReadCounter*PAGE_SIZE), readBuffer, PAGE_SIZE);
+          delay(50);
+
+          
+          if (memoryPage == 0) {
+            FLASH.read(0, writeBuffer, PAGE_SIZE);
+          } else if (!memoryPage == 0) {
+            FLASH.read(((pageReadCounter*PAGE_SIZE)+pageReadCounter), readBuffer, PAGE_SIZE);
+          }
+          
+          //FLASH.read(((pageReadCounter*PAGE_SIZE)-pageReadCounter), readBuffer, PAGE_SIZE);
+          
           FLASH.waitforit();
           Serial.print(F("pageCounter: "));
           Serial.print(pageReadCounter);
@@ -303,7 +312,7 @@ void loop() {
             BLESerial.print(F("Hall sensor: "));
             break;
           case 2:  // LIGHT SENSOR SETUP
-            sensorTreshold = (analogRead(PHOTORESIS_PIN)/2.8);
+            sensorTreshold = map(analogRead(PHOTORESIS_PIN), 0, 800, 0, 255);
             BLESerial.print(F("Light: "));
             break;
           case 3: // HUMIDITY SENSOR SETUP
@@ -346,9 +355,8 @@ void loop() {
                   BLESerial.println(writeBuffer[memoryIndex]);
                   break;
                 case 2:  // LIGHT SENSOR SETUP
-                  writeBuffer[memoryIndex] = (analogRead(PHOTORESIS_PIN)/2.8); // need it for to scale
-                  phoVal = (analogRead(PHOTORESIS_PIN)/2.8);
-                  BLESerial.print(F("Light: "));
+                  writeBuffer[memoryIndex] = map(analogRead(PHOTORESIS_PIN), 0, 800, 0, 255);
+                  BLESerial.print(F("SAMPLING MODE Light: "));
                   BLESerial.println(writeBuffer[memoryIndex]);
                   break;
                 case 3: // HUMIDITY SENSOR SETUP
@@ -358,8 +366,14 @@ void loop() {
                   BLESerial.println(writeBuffer[memoryIndex]);
                   break;
               }
-              if (memoryIndex == PAGE_SIZE-1) { // PAGE_SIZE + 1
-                FLASH.write((memoryPage*PAGE_SIZE), writeBuffer, PAGE_SIZE);
+              if (memoryIndex == PAGE_SIZE-1) {
+                if (memoryPage == 0) {
+                  FLASH.write(0, writeBuffer, PAGE_SIZE);
+                } else if (!memoryPage == 0) {
+                  FLASH.write(((memoryPage*PAGE_SIZE)+memoryPage), writeBuffer, PAGE_SIZE);
+                  Serial.print(F("starter location:" ));
+                  Serial.println((memoryPage*PAGE_SIZE)+memoryPage);
+                }
                 FLASH.waitforit();
                 Serial.println(F("1 page was written on the Flash memory."));
                 BLESerial.println(F("1 page was written on the Flash memory."));
@@ -367,6 +381,7 @@ void loop() {
                 memoryPage++;
               } else {
                 memoryIndex++;
+                Serial.println(F("memoryIndex++"));
               }
             }
             if (BLESerial.available()) {
@@ -387,7 +402,7 @@ void loop() {
 
               // WRITE DATA IF WRITER FLAG CHANGED
               if (writerFlag) {
-                if (memoryIndex >= PAGE_SIZE-1) { // PAGE_SIZE + 1
+                if (memoryIndex == PAGE_SIZE+1) { // PAGE_SIZE + 1
                   FLASH.write((memoryPage*PAGE_SIZE), writeBuffer, PAGE_SIZE);
                   FLASH.waitforit();
                   Serial.println(F("1 page was written on the Flash memory."));
@@ -412,7 +427,7 @@ void loop() {
                   tmpSensor = digitalRead(HALL_PIN);
                   break;
                 case 2:  // LIGHT SENSOR SETUP
-                  tmpSensor = (analogRead(PHOTORESIS_PIN)/2.8);
+                  tmpSensor = map(analogRead(PHOTORESIS_PIN), 0, 800, 0, 255);
                   break;
                 case 3:
                   DHT.read11(DHT11_PIN);
