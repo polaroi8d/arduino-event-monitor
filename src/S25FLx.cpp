@@ -69,7 +69,7 @@ void flash::waitforit(){
   byte s=stat();
   while ((s & B0000001)==B00000001){    //check if WIP bit is 1
     //  while (s==B00000011||s==B00000001){
-    if ((millis()-prev)>1000){           
+    if ((millis()-prev)>1000){
       prev=millis();
       Serial.print("S25FL Busy. Status register = B");
       printBits(s);
@@ -100,7 +100,7 @@ void flash::write_enable(){
 // while the chip is errasing except for reading the register
 void flash::erase_4k(unsigned long loc){
 
-  waitforit(); 
+  waitforit();
   write_enable();
 
   digitalWrite(CS,LOW);
@@ -109,7 +109,7 @@ void flash::erase_4k(unsigned long loc){
   SPI.transfer(loc>>8);
   SPI.transfer(loc & 0xFF);
   digitalWrite(CS,HIGH);
-  waitforit(); 
+  waitforit();
 }
 
  // Errase an entire 64_k sector the location is in.
@@ -166,149 +166,115 @@ void flash::read(unsigned long loc, uint8_t* array, unsigned long length){
 // location %=0 (for example location=256, length=255.) or your length is less that the bytes remain
 // in the page (location =120 , length= 135)
 
- 
+
 //write_S25(starting location, array, number of bytes);
 void flash::write(unsigned long loc, uint8_t* array, unsigned long length){
 
-if (length>255){
-  Serial.println("Page is higher than 255");
+    if (length>255) {
+        Serial.println("Page is higher than 255");
 
-unsigned long reps=length>>8;
-unsigned long length1;
-unsigned long array_count;
-unsigned long first_length;
-unsigned remainer0=length-(256*reps);
-unsigned long locb=loc;
+        unsigned long reps=length>>8;
+        unsigned long length1;
+        unsigned long array_count;
+        unsigned long first_length;
+        unsigned remainer0=length-(256*reps);
+        unsigned long locb=loc;
 
-Serial.print("reps ");Serial.println(reps);
-Serial.print("remainer0 ");Serial.println(remainer0);
-
-
-for (int i=0; i<(reps+2);i++){
-
-if (i==0){
-
- length1=256-(locb & 0xff);
- first_length=length1;
- if (length1==0){i++;}
- array_count=0;
-}
-
-if (i>0 && i<(reps+1)){
-locb= first_length+loc+(256*(i-1));;
-
-array_count=first_length+(256*(i-1));
-length1=255;
-
-}
-if (i==(reps+1)){
-locb+=(256);
-array_count+=256;
-length1=remainer0;
-if (remainer0==0){break;}
-
-}
-//Serial.print("i ");Serial.println(i);
-//Serial.print("locb ");Serial.println(locb);
-//Serial.print("length1 ");Serial.println(length1);
-//Serial.print("array_count ");Serial.println(array_count );
+        Serial.print("reps ");Serial.println(reps);
+        Serial.print("remainer0 ");Serial.println(remainer0);
 
 
- write_enable(); 
-  waitforit();
-  digitalWrite(CS,LOW);
-  SPI.transfer(PP);
-  SPI.transfer(locb>>16);
-  SPI.transfer(locb>>8);
-  SPI.transfer(locb & 0xff);
+        for (int i=0; i<(reps+2);i++) {
+            if (i==0) {
+                length1=256-(locb & 0xff);
+                first_length=length1;
+                if (length1==0) {i++;}
+                array_count=0;
+            }
 
-  for (unsigned long i=array_count; i<(length1+array_count+1) ; i++){
-    SPI.transfer(array[i]); 
-  }
+            if (i>0 && i<(reps+1)){
+                locb= first_length+loc+(256*(i-1));;
+                array_count=first_length+(256*(i-1));
+                length1=255;
+            }
 
-  digitalWrite(CS,HIGH);
-  waitforit();
- 
+            if (i==(reps+1)) {
+                locb+=(256);
+                array_count+=256;
+                length1=remainer0;
+                if (remainer0==0) {break;}
+            }
 
-//Serial.println("//////////");
+            write_enable(); 
+            waitforit();
+            digitalWrite(CS,LOW);
+            SPI.transfer(PP);
+            SPI.transfer(locb>>16);
+            SPI.transfer(locb>>8);
+            SPI.transfer(locb & 0xff);
 
+            for (unsigned long i=array_count; i<(length1+array_count+1) ; i++) {
+                SPI.transfer(array[i]); 
+            }
 
-}
-}
+            digitalWrite(CS,HIGH);
+            waitforit();
+        }
+    }
 
-if (length<=255){
-  Serial.println("Page is lower than 255");
+    if (length<=255) {
+        if (((loc & 0xff)!=0) | ((loc & 0xff)<length)) {
+            byte remainer = loc & 0xff;
+            byte length1 =256-remainer;
+            byte length2 = length-length1;
+            unsigned long page1_loc = loc;
+            unsigned long page2_loc = loc+length1;
 
-if (((loc & 0xff)!=0) | ((loc & 0xff)<length)){
-byte remainer = loc & 0xff;
-byte length1 =256-remainer;
-byte length2 = length-length1;
-unsigned long page1_loc = loc;
-unsigned long page2_loc = loc+length1;
+            write_enable();
+            waitforit();
+            digitalWrite(CS,LOW);
+            SPI.transfer(PP);
+            SPI.transfer(page1_loc>>16);
+            SPI.transfer(page1_loc>>8);
+            SPI.transfer(page1_loc & 0xff);
 
- write_enable(); 
-  waitforit();
-  digitalWrite(CS,LOW);
-  SPI.transfer(PP);
-  SPI.transfer(page1_loc>>16);
-  SPI.transfer(page1_loc>>8);
-  SPI.transfer(page1_loc & 0xff);
+            for (int i=0; i<length1;i++) {
+                SPI.transfer(array[i]);
+            }
 
-  for (int i=0; i<length1;i++){
-    SPI.transfer(array[i]); 
-  }
+            digitalWrite(CS,HIGH);
+            waitforit();
+            write_enable();
+            waitforit();
 
-  digitalWrite(CS,HIGH);
-  waitforit();
- write_enable(); 
+            digitalWrite(CS,LOW);
+            SPI.transfer(PP);
+            SPI.transfer(page2_loc>>16);
+            SPI.transfer(page2_loc>>8);
+            SPI.transfer(page2_loc & 0xff);
 
-  waitforit();
+            for (int i=length1; i<length+1;i++){
+             SPI.transfer(array[i]);
+            }
+        } else {
+            Serial.print("loc & 0xff = ");Serial.println(loc & 0xff);
 
-  digitalWrite(CS,LOW);
-  SPI.transfer(PP);
-  SPI.transfer(page2_loc>>16);
-  SPI.transfer(page2_loc>>8);
-  SPI.transfer(page2_loc & 0xff);
+            write_enable(); // Must be done before writing can commence. Erase clears it. 
+            waitforit();
+            digitalWrite(CS,LOW);
+            SPI.transfer(PP);
+            SPI.transfer(loc>>16);
+            SPI.transfer(loc>>8);
+            SPI.transfer(loc & 0xff);
 
-  for (int i=length1; i<length+1;i++){
-    SPI.transfer(array[i]); 
-  }
+            for (int i=0; i<length+1;i++){
+                SPI.transfer(array[i]); 
+            }
 
-  digitalWrite(CS,HIGH);
-  waitforit();
-  Serial.println(F("//////////"));  
-  Serial.print(F("remainer "));Serial.println(remainer);
-
-  Serial.print(F("length1 "));Serial.println(length1);
-  Serial.print(F("length2 "));Serial.println(length2);
-  Serial.print(F("page1_loc "));Serial.println(page1_loc);
-  Serial.print(F("page2_loc "));Serial.println(page2_loc);
-  Serial.println(F("//////////"));
-
-
-}
-
-
-
-else{
-Serial.print("loc & 0xff = ");Serial.println(loc & 0xff);
-
-  write_enable(); // Must be done before writing can commence. Erase clears it. 
-  waitforit();
-  digitalWrite(CS,LOW);
-  SPI.transfer(PP);
-  SPI.transfer(loc>>16);
-  SPI.transfer(loc>>8);
-  SPI.transfer(loc & 0xff);
-
-  for (int i=0; i<length+1;i++){
-    SPI.transfer(array[i]); 
-  }
-
-  digitalWrite(CS,HIGH);
-  waitforit();
-}
-}
+            digitalWrite(CS,HIGH);
+            waitforit();
+        }
+    }
 }
 
 

@@ -21,17 +21,17 @@ unsigned char tresholdMode;
 unsigned short sensorTreshold;
 unsigned long freqy;
 byte tresholdFlag = 0;
-boolean writerFlag = false;
 uint8_t tmpSensor;
 
 /** TIME */
 unsigned long timeNow = 0;
 unsigned long timeLast = 0;
-unsigned char startingHour = 0;
-unsigned char seconds = 0;
-unsigned char minutes = 0;
-unsigned char hours = 0;
-unsigned char days = 0;
+uint8_t startingHour = 0;
+uint8_t seconds = 0;
+uint8_t minutes = 0;
+uint8_t hours = 0;
+uint8_t days = 0;
+boolean writerFlag = false;
 boolean tized;
 
 /** FLASH MEMORY */
@@ -109,11 +109,11 @@ void getTime() {
     minutes = 0;
     hours += 1;
   }
-
-  if (hours == 24){ // DAYS
-    hours = 0;
-    days += 1;
-  }
+ 
+  if (hours == 24){ // DAYS 
+    hours = 0; 
+    days += 1; 
+  } 
 }
 
 void readBLE() {
@@ -133,11 +133,11 @@ void loop() {
     Serial.println(recieveBuff);
     int j = 0;
     switch (recieveBuff) {
-      case '_':
+      case '_':  // BLUETOOTH READY CONNECTION 
         Serial.println(F("Bluetooth is connected, ready to communicate."));
         status("ready");
         break;
-      case 'c':
+      case 'c':  // CONFIG PRINT 
         printConfig();
         break;
       case 'w':
@@ -203,43 +203,30 @@ void loop() {
           BLESerial.println("No data found!");
         }
         for(pageReadCounter=0; pageReadCounter<memoryPage; pageReadCounter++) {
-          delay(50);
-
-          
           if (memoryPage == 0) {
             FLASH.read(0, writeBuffer, PAGE_SIZE);
           } else if (!memoryPage == 0) {
             FLASH.read(((pageReadCounter*PAGE_SIZE)+pageReadCounter), readBuffer, PAGE_SIZE);
           }
-          
-          //FLASH.read(((pageReadCounter*PAGE_SIZE)-pageReadCounter), readBuffer, PAGE_SIZE);
-          
           FLASH.waitforit();
-          Serial.print(F("pageCounter: "));
-          Serial.print(pageReadCounter);
-          Serial.print(F(" | memoryPage: "));
-          Serial.print(memoryPage);
-          Serial.print(" | (pageReadCounter*PAGE_SIZE): ");
-          Serial.println((pageReadCounter*PAGE_SIZE));
-          for(j=0;j<PAGE_SIZE;j++) {
-            Serial.print(F("Export the BUFFER["));
-            Serial.print(j);
-            Serial.print(F("]: "));
-            Serial.println(readBuffer[j]);
+          
+          Serial.print(F("pageCounter: ")); Serial.print(pageReadCounter);
+          Serial.print(F(" | memoryPage: ")); Serial.print(memoryPage);
+          Serial.print(" | start location:"); Serial.println((pageReadCounter*PAGE_SIZE)+pageReadCounter);
+          for(j=0; j<PAGE_SIZE; j++) {
+            Serial.print(F("Export the readBuffer[")); Serial.print(j); Serial.print(F("]: ")); Serial.println(readBuffer[j]);
             BLESerial.print("D:");
             BLESerial.println(readBuffer[j]);
             delay(50);
           }
         }
+        
         if (memoryIndex != 0) {
           FLASH.read((pageReadCounter*PAGE_SIZE), readBuffer, memoryIndex);
           FLASH.waitforit();
           Serial.println(F("Reminder transfer:"));
-          for(j=0;j<=memoryIndex;j++) {
-            Serial.print(F("Export the remaining BUFFER["));
-            Serial.print(j);
-            Serial.print(F("]: "));
-            Serial.println(readBuffer[j]);
+          for(j=0; j<memoryIndex; j++) {
+            Serial.print(F("Export the remaining readBuffer[")); Serial.print(j); Serial.print(F("]: ")); Serial.println(readBuffer[j]);
             BLESerial.print("D:");
             BLESerial.println(readBuffer[j]);
             delay(50);
@@ -250,7 +237,7 @@ void loop() {
         BLESerial.print("DATA:END");
         status("ready");
         break;
-      case 'C': // CLOCK TIME PARSING
+      case 'C': // SAMPLING TIME PARSER
         tized = true;
         while(1){
           readBLE();
@@ -276,7 +263,7 @@ void loop() {
         Serial.print(F(":"));
         Serial.println(minutes);
         break;
-      case 'T':
+      case 'T': // CLOCK CONFIG PARSER
         freqy = 0;
         recieveBuff = "";
         // recieve frequency -> magic parser
@@ -326,14 +313,14 @@ void loop() {
         }
         BLESerial.println(sensorTreshold);
 
-        // The duplicated for the treshold placer
+        // The duplicated for the treshold placer in Client application
         BLESerial.print(F("SENSOR:TRESHOLD/"));
         BLESerial.println(sensorTreshold);
         status("ready");
         break;
       case 'r':
-        memoryIndex = 0;  // set defult paramaters 
-        memoryPage = 0;   // set defult paramaters 
+        memoryIndex = 0;  // Set defult paramaters 
+        memoryPage = 0;   // Set defult paramaters 
         if (sensorMode == 1) { //SAMPLING MODE
           Serial.println(F("****** START SAMPLING MODE ******"));
           prevMillis = 0;
@@ -341,7 +328,7 @@ void loop() {
             currentMillis = millis();
             if (currentMillis - prevMillis >= freqy ) {
               prevMillis = currentMillis;
-              Serial.println(F("Interrupt occured."));
+              Serial.println(F("Debug log: Interrupt occured."));
               switch (type) {
                 case 0: // TEMPERATURE SENSOR SETUP
                   DHT.read11(DHT11_PIN);
@@ -369,19 +356,19 @@ void loop() {
               if (memoryIndex == PAGE_SIZE-1) {
                 if (memoryPage == 0) {
                   FLASH.write(0, writeBuffer, PAGE_SIZE);
+                  FLASH.waitforit();
                 } else if (!memoryPage == 0) {
                   FLASH.write(((memoryPage*PAGE_SIZE)+memoryPage), writeBuffer, PAGE_SIZE);
+                  FLASH.waitforit();
                   Serial.print(F("starter location:" ));
                   Serial.println((memoryPage*PAGE_SIZE)+memoryPage);
                 }
-                FLASH.waitforit();
                 Serial.println(F("1 page was written on the Flash memory."));
                 BLESerial.println(F("1 page was written on the Flash memory."));
                 memoryIndex = 0;
                 memoryPage++;
               } else {
                 memoryIndex++;
-                Serial.println(F("memoryIndex++"));
               }
             }
             if (BLESerial.available()) {
@@ -389,33 +376,14 @@ void loop() {
             }
           }
           status("ready");
-        } else if (sensorMode == 2) {
+        } else if (sensorMode == 2) { // EVENT BASED MODE
           Serial.println(F("****** START EVENT BASE MODE ******"));
-          BLESerial.print(F("The treshold sensore value:"));
-          BLESerial.println(sensorTreshold);
           prevMillis = 0;
           while (recieveBuff != 'p') {
             currentMillis = millis();
             if (currentMillis - prevMillis >= freqy ) {
               prevMillis = currentMillis;
-              Serial.println(F("Interrupt occured."));
-
-              // WRITE DATA IF WRITER FLAG CHANGED
-              if (writerFlag) {
-                if (memoryIndex == PAGE_SIZE+1) { // PAGE_SIZE + 1
-                  FLASH.write((memoryPage*PAGE_SIZE), writeBuffer, PAGE_SIZE);
-                  FLASH.waitforit();
-                  Serial.println(F("1 page was written on the Flash memory."));
-                  BLESerial.println(F("1 page was written on the Flash memory."));
-                  memoryIndex = 0;
-                  memoryPage++;
-                } else {
-                  memoryIndex += 2;
-                  Serial.print(F("memory index: "));
-                  Serial.println(memoryIndex);
-                }
-                writerFlag = false;
-              }
+              Serial.println(F("Debug log: Interrupt occured."));
 
               // get tmpSensor the right value depend on the picked sensor 
               switch (type) {
@@ -429,29 +397,58 @@ void loop() {
                 case 2:  // LIGHT SENSOR SETUP
                   tmpSensor = map(analogRead(PHOTORESIS_PIN), 0, 800, 0, 255);
                   break;
-                case 3:
+                case 3:  // HUMIDITY SENSOR SETUP
                   DHT.read11(DHT11_PIN);
                   tmpSensor = DHT.humidity;
                   break;
               }
 
               switch (tresholdMode) {
-                case 3:
+                case 3:  // EVENT BASED TRESHOLD MODE
                   if (tmpSensor < sensorTreshold && tresholdFlag == 0) {
-                    Serial.println(F("SENSOR < TRESHOLD"));
+                    Serial.println(F("Event detected: SENSOR < TRESHOLD"));
+                    getTime();
                     writeBuffer[memoryIndex] = tmpSensor;
-                    writeBuffer[memoryIndex+1] = 'L';
+                    writeBuffer[memoryIndex+1] = 0;
+                    writeBuffer[memoryIndex+2] = seconds;
+                    writeBuffer[memoryIndex+3] = minutes;
                     tresholdFlag = 1;
                     writerFlag = true;
                   } else if (tmpSensor >= sensorTreshold && tresholdFlag == 1) {
-                    Serial.println(F("SENSOR > TRESHOLD"));
+                    Serial.println(F("Event detected: SENSOR > TRESHOLD"));
+                    getTime();
                     writeBuffer[memoryIndex] = tmpSensor;
-                    writeBuffer[memoryIndex+1] = 'F';
+                    writeBuffer[memoryIndex+1] = 1;
+                    writeBuffer[memoryIndex+2] = seconds;
+                    writeBuffer[memoryIndex+3] = minutes;
                     tresholdFlag = 0;
                     writerFlag = true;
                   } else {
                     Serial.println(F("No changes..."));
                   }
+                  
+                  if (writerFlag) {
+                    memoryIndex += 4;
+                    Serial.print(F("Memory index: ")); Serial.print(memoryIndex);
+                    Serial.print(F(" |  PAGE SIZE: ")); Serial.println(PAGE_SIZE);
+                    BLESerial.print("Sensor value: "); BLESerial.println(writeBuffer[memoryIndex]);
+                    if (memoryIndex == PAGE_SIZE) { // WRITE DATA IF WRITER FLAG CHANGED
+                      Serial.println(F("Memory index == PAGE_SIZE, so write it out to the memory."));
+                      if (memoryPage == 0) {
+                        FLASH.write(0, writeBuffer, PAGE_SIZE);
+                        FLASH.waitforit();
+                      } else {
+                        FLASH.write(((memoryPage*PAGE_SIZE)+memoryPage), writeBuffer, PAGE_SIZE);
+                        FLASH.waitforit();
+                      }
+                      Serial.println(F("1 page was written on the Flash memory."));
+                      BLESerial.println(F("1 page was written on the Flash memory."));
+                      memoryIndex = 0;
+                      memoryPage++;
+                    }
+                    writerFlag = false;
+                  }
+
                   break;
                 case 2:
                   if (tmpSensor > sensorTreshold) {
