@@ -103,8 +103,15 @@ sendtresholdModeMin.addEventListener('click', function(event) {
 
 sendEdgeSensorValue.addEventListener('click', function(event) {
   console.log("Get edge sensore value.");
+  if(document.getElementById("tresholdValue").value == '') {
+    send('q');
+    console.log("send q");
+  } else {
+    tmpSenderBuffer = 'Q' + document.getElementById("tresholdValue").value + ':';
+    console.log("SENDED BUFFER [" + tmpSenderBuffer + "]");
+    send(tmpSenderBuffer)
+  }
   event.preventDefault();
-  send('q');
 });
 
 
@@ -169,6 +176,10 @@ function scrollElement(element) {
   if (scrollTop > 0) {
     element.scrollTop = scrollTop;
   }
+}
+
+function clearTerminal() {
+  document.getElementById("console").innerHTML = "";
 }
 
 function logToTerminal(message) {

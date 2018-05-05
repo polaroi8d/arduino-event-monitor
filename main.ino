@@ -8,7 +8,7 @@
 #define HALL_PIN 6
 #define RX_PIN 8
 #define TX_PIN 7
-#define PAGE_SIZE 16
+#define PAGE_SIZE 255
 
 SoftwareSerial BLESerial(TX_PIN, RX_PIN); // TX, RX
 dht DHT;
@@ -18,7 +18,7 @@ flash FLASH;  //starts flash class and initilzes SPI
 unsigned char type;
 unsigned char sensorMode;
 unsigned char tresholdMode;
-unsigned short sensorTreshold;
+uint8_t sensorTreshold;
 unsigned long freqy;
 byte tresholdFlag = 0;
 uint8_t tmpSensor;
@@ -26,12 +26,12 @@ uint8_t tmpSensor;
 /** TIME */
 unsigned long timeNow = 0;
 unsigned long timeLast = 0;
-uint8_t startingHour = 0;
 uint8_t seconds = 0;
 uint8_t minutes = 0;
 uint8_t hours = 0;
 uint8_t days = 0;
 boolean writerFlag = false;
+boolean memoryIndexOverFlowFlag = false;
 boolean tized;
 
 /** FLASH MEMORY */
@@ -100,19 +100,20 @@ void getTime() {
   timeNow = millis()/1000;
   seconds = timeNow - timeLast;
 
-  if (seconds == 60) { // MINUTES
-    timeLast = timeNow;
-    minutes += 1;
+  if (seconds > 60) { // MINUTES
+    minutes = seconds / 60;
+    timeLast = timeNow + seconds % 60;
+    
   }
 
-  if (minutes == 60){  // HOURS
-    minutes = 0;
-    hours += 1;
+  if (minutes > 60){  // HOURS
+    minutes = minutes % 60;
+    hours = minutes / 60;
   }
  
-  if (hours == 24){ // DAYS 
-    hours = 0; 
-    days += 1; 
+  if (hours > 24){ // DAYS 
+    hours = hours % 24; 
+    days = hours / 24; 
   } 
 }
 
@@ -243,9 +244,9 @@ void loop() {
           readBLE();
           if(recieveBuff == '/') { break; }
           if (tized) {
-            startingHour = (recieveBuff - '0') * 10;  //convert char to digit
+            hours = (recieveBuff - '0') * 10;  //convert char to digit
             tized = false;
-          } else { startingHour += (recieveBuff - '0'); }
+          } else { hours += (recieveBuff - '0'); }
         }
         tized = true;
         while (1){
@@ -259,7 +260,7 @@ void loop() {
         status("ready");
         BLESerial.println(F("Time is configured."));
         Serial.print(F("Time is configured:"));
-        Serial.print(startingHour);
+        Serial.print(hours);
         Serial.print(F(":"));
         Serial.println(minutes);
         break;
@@ -269,9 +270,8 @@ void loop() {
         // recieve frequency -> magic parser
         while (recieveBuff != ':') {
           readBLE();
-          if (recieveBuff == ':') {
-            break;
-          }
+          if (recieveBuff == ':') { break; }
+          
           if ((recieveBuff - '0') == 0) {
             freqy *= 10;
           } else {
@@ -285,6 +285,17 @@ void loop() {
       case 'p':
         Serial.println(F("PROGRAM STOPPED"));
         status("ready");
+        break;
+      case 'Q':
+        Serial.println(F("GET THE CUSTOM TRESHOLD VALUE"));
+        sensorTreshold = 0; // Delete the optional sensor value
+        readBLE();
+        while (recieveBuff != ':') {
+          sensorTreshold = 10 * sensorTreshold + (recieveBuff - '0');
+          readBLE();
+        }
+        Serial.print(F("Treshold configured to: "));
+        Serial.println(sensorTreshold);
         break;
       case 'q':
         Serial.println(F("TRESHOLD SAMPLING IS PROCESSED"));
@@ -405,34 +416,40 @@ void loop() {
 
               switch (tresholdMode) {
                 case 3:  // EVENT BASED TRESHOLD MODE
-                  if (tmpSensor < sensorTreshold && tresholdFlag == 0) {
-                    Serial.println(F("Event detected: SENSOR < TRESHOLD"));
-                    getTime();
-                    writeBuffer[memoryIndex] = tmpSensor;
-                    writeBuffer[memoryIndex+1] = 0;
-                    writeBuffer[memoryIndex+2] = seconds;
-                    writeBuffer[memoryIndex+3] = minutes;
-                    tresholdFlag = 1;
-                    writerFlag = true;
-                  } else if (tmpSensor >= sensorTreshold && tresholdFlag == 1) {
-                    Serial.println(F("Event detected: SENSOR > TRESHOLD"));
-                    getTime();
-                    writeBuffer[memoryIndex] = tmpSensor;
-                    writeBuffer[memoryIndex+1] = 1;
-                    writeBuffer[memoryIndex+2] = seconds;
-                    writeBuffer[memoryIndex+3] = minutes;
-                    tresholdFlag = 0;
-                    writerFlag = true;
-                  } else {
-                    Serial.println(F("No changes..."));
+                  if(!memoryIndexOverFlowFlag) {
+                    if (tmpSensor < sensorTreshold && tresholdFlag == 0) {
+                      Serial.println(F("Event detected: SENSOR < TRESHOLD"));
+                      getTime();
+                      writeBuffer[memoryIndex] = tmpSensor;
+                      writeBuffer[memoryIndex+1] = 0;
+                      writeBuffer[memoryIndex+2] = seconds;
+                      writeBuffer[memoryIndex+3] = minutes;
+                      writeBuffer[memoryIndex+4] = hours;
+                      writeBuffer[memoryIndex+5] = days;
+                      tresholdFlag = 1;
+                      writerFlag = true;
+                    } else if (tmpSensor >= sensorTreshold && tresholdFlag == 1) {
+                      Serial.println(F("Event detected: SENSOR > TRESHOLD"));
+                      getTime();
+                      writeBuffer[memoryIndex] = tmpSensor;
+                      writeBuffer[memoryIndex+1] = 1;
+                      writeBuffer[memoryIndex+2] = seconds;
+                      writeBuffer[memoryIndex+3] = minutes;
+                      writeBuffer[memoryIndex+4] = hours;
+                      writeBuffer[memoryIndex+5] = days;
+                      tresholdFlag = 0;
+                      writerFlag = true;
+                    } else {
+                      Serial.println(F("No changes..."));
+                    }
                   }
                   
                   if (writerFlag) {
-                    memoryIndex += 4;
                     Serial.print(F("Memory index: ")); Serial.print(memoryIndex);
-                    Serial.print(F(" |  PAGE SIZE: ")); Serial.println(PAGE_SIZE);
+                    Serial.print(F(" |  PAGE SIZE: ")); Serial.print(PAGE_SIZE);
+                    Serial.print(F(" | Sensor treshold value: ")); Serial.println(sensorTreshold);
                     BLESerial.print("Sensor value: "); BLESerial.println(writeBuffer[memoryIndex]);
-                    if (memoryIndex == PAGE_SIZE) { // WRITE DATA IF WRITER FLAG CHANGED
+                    if ((memoryIndex-1) == PAGE_SIZE) { // WRITE DATA IF WRITER FLAG CHANGED
                       Serial.println(F("Memory index == PAGE_SIZE, so write it out to the memory."));
                       if (memoryPage == 0) {
                         FLASH.write(0, writeBuffer, PAGE_SIZE);
@@ -445,7 +462,17 @@ void loop() {
                       BLESerial.println(F("1 page was written on the Flash memory."));
                       memoryIndex = 0;
                       memoryPage++;
+                    } else {
+                      Serial.println(F("Memory index != PAGE_SIZE"));
                     }
+                    memoryIndex += 8;
+
+                    if((memoryIndex-1) == PAGE_SIZE) {
+                      memoryIndexOverFlowFlag = true;
+                    } else {
+                      memoryIndexOverFlowFlag = false;
+                    }
+                    
                     writerFlag = false;
                   }
 
