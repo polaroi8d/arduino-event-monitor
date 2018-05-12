@@ -80,7 +80,7 @@ void printConfig() {
   BLESerial.println(SENSOR_TYPES);
   BLESerial.print(F("    SENSOR MODE:"));
   BLESerial.println(SENSOR_MODES);
-  BLESerial.print(F("    SENSOR TRESHOLD VALUE:"));
+  BLESerial.print(F("    SENSOR THRESHOLD VALUE:"));
   BLESerial.println(sensorThreshold);
   BLESerial.print(F("    FREQUENCY (IN SECONDS)"));
   BLESerial.println((freqy / 1000));
@@ -90,9 +90,9 @@ void printConfig() {
   Serial.println(SENSOR_TYPES);
   Serial.print(F("    SENSOR MODE: "));
   Serial.println(SENSOR_MODES);
-  Serial.print(F("    SENSOR TRESHOLD VALUE: "));
+  Serial.print(F("    SENSOR THRESHOLD VALUE: "));
   Serial.println(sensorThreshold);
-  Serial.print(F("    SENSOR TRESHOLD MODE: "));
+  Serial.print(F("    SENSOR THRESHOLD MODE: "));
   Serial.println(THRESHOLD_MODES);
   Serial.print(F("    FREQUENCY: "));
   Serial.println(freqy / 1000);
@@ -169,21 +169,21 @@ void loop() {
         status("ready");
         break;
       case '-':
-        Serial.println(F("TRESHOLD MODE: MIN"));
+        Serial.println(F("THRESHOLD MODE: MIN"));
         THRESHOLD_MODES = minimum;
-        BLESerial.println(F("The treshold mode is MIN"));
+        BLESerial.println(F("The THRESHOLD mode is MIN"));
         status("ready");
         break;
       case '+':
-        Serial.println(F("TRESHOLD MODE: MAX"));
+        Serial.println(F("THRESHOLD MODE: MAX"));
         THRESHOLD_MODES = maximum;
-        BLESerial.println(F("The treshold mode is MAX"));
+        BLESerial.println(F("The THRESHOLD mode is MAX"));
         status("ready");
         break;
       case '/':
-        Serial.println(F("TRESHOLD MODE: LEVEL CHANGE TRIGGERED"));
+        Serial.println(F("THRESHOLD MODE: LEVEL CHANGE TRIGGERED"));
         THRESHOLD_MODES = level;
-        BLESerial.println(F("The treshold mode is level change triggered."));
+        BLESerial.println(F("The THRESHOLD mode is level change triggered."));
         status("ready");
         break;
       case 'E':  // Format the Flash memory
@@ -283,19 +283,19 @@ void loop() {
         status("ready");
         break;
       case 'Q':
-        Serial.println(F("GET THE CUSTOM TRESHOLD VALUE"));
+        Serial.println(F("GET THE CUSTOM THRESHOLD VALUE"));
         sensorThreshold = 0; // Delete the optional sensor value
         readBLE();
         while (recieveBuff != ':') {
           sensorThreshold = 10 * sensorThreshold + (recieveBuff - '0');
           readBLE();
         }
-        Serial.print(F("Treshold configured to: "));
+        Serial.print(F("THRESHOLD configured to: "));
         Serial.println(sensorThreshold);
         status("ready");
         break;
       case 'q':
-        Serial.println(F("TRESHOLD SAMPLING IS PROCESSED"));
+        Serial.println(F("THRESHOLD SAMPLING IS PROCESSED"));
         switch (SENSOR_TYPES) {
           case temperature:
             DHT.read11(DHT11_PIN);
@@ -321,8 +321,8 @@ void loop() {
         }
         BLESerial.println(sensorThreshold);
 
-        // The duplicated for the treshold placer in Client application
-        BLESerial.print(F("SENSOR:TRESHOLD/"));
+        // The duplicated for the THRESHOLD placer in Client application
+        BLESerial.print(F("SENSOR:THRESHOLD/"));
         BLESerial.println(sensorThreshold);
         status("ready");
         break;
@@ -415,7 +415,7 @@ void loop() {
                 case level:
                   if(!memoryIndexOverFlowFlag) {
                     if (tmpSensor < sensorThreshold && thresholdFlag == 0) {
-                      Serial.println(F("Event detected: SENSOR < TRESHOLD"));
+                      Serial.println(F("Event detected: SENSOR < THRESHOLD"));
                       writeBuffer[memoryIndex] = tmpSensor;
                       writeBuffer[memoryIndex+1] = 0;
                       writeBuffer[memoryIndex+2] = (uint8_t) second();  // make a function call for it 
@@ -426,7 +426,7 @@ void loop() {
                       thresholdFlag = 1;
                       writerFlag = true;
                     } else if (tmpSensor >= sensorThreshold && thresholdFlag == 1) {
-                      Serial.println(F("Event detected: SENSOR > TRESHOLD"));
+                      Serial.println(F("Event detected: SENSOR > THRESHOLD"));
                       writeBuffer[memoryIndex] = tmpSensor;
                       writeBuffer[memoryIndex+1] = 1;
                       writeBuffer[memoryIndex+2] = (uint8_t) second();  // no code duplication
@@ -444,7 +444,7 @@ void loop() {
                   if (writerFlag) {
                     Serial.print(F("Memory index: ")); Serial.print(memoryIndex);
                     Serial.print(F(" |  PAGE SIZE: ")); Serial.print(PAGE_SIZE);
-                    Serial.print(F(" | Sensor treshold value: ")); Serial.println(sensorThreshold);
+                    Serial.print(F(" | Sensor THRESHOLD value: ")); Serial.println(sensorThreshold);
                     BLESerial.print("Sensor value: "); BLESerial.println(writeBuffer[memoryIndex]);
                     if ((memoryIndex-1) == PAGE_SIZE) { // WRITE DATA IF WRITER FLAG CHANGED
                       Serial.println(F("Memory index == PAGE_SIZE, so write it out to the memory."));
@@ -489,8 +489,8 @@ void loop() {
                   }
                   break;
                 default:
-                  BLESerial.print(F("There is no such a treshold mode."));
-                  Serial.println(F("Warning: Treshold mode not found!"));
+                  BLESerial.print(F("There is no such a THRESHOLD mode."));
+                  Serial.println(F("Warning: THRESHOLD mode not found!"));
                   break;
               }
             }
