@@ -1,8 +1,9 @@
+#include <SPI.h>
 #include <SoftwareSerial.h>
 #include "src/Time.h"
-#include <SPI.h>
 #include "src/S25FLx.h"
 #include "src/dht.h"
+#include "main.h"
 
 #define PHOTORESIS_PIN 1
 #define DHT11_PIN 4
@@ -17,15 +18,15 @@
 
 SoftwareSerial BLESerial(TX_PIN, RX_PIN); // TX, RX
 dht DHT;
-flash FLASH;  //starts flash class and initilzes SPI
+flash FLASH;
+SensorTypes SENSOR_TYPES;
+SensorModes SENSOR_MODES;
+ThresholdModes THRESHOLD_MODES;
 
 /** CONFIG */
-unsigned char type;
-unsigned char sensorMode;
-unsigned char tresholdMode;
-uint8_t sensorTreshold;
+uint8_t sensorThreshold;
 unsigned long freqy;
-byte tresholdFlag = 0;
+byte thresholdFlag = 0;
 uint8_t tmpSensor;
 
 /** TIME */
@@ -76,23 +77,23 @@ void status(char status[]) {
 void printConfig() {
   BLESerial.println(F("******** CONFIG WIZARD: ********"));
   BLESerial.print(F("    TYPE:"));
-  BLESerial.println(type);
+  BLESerial.println(SENSOR_TYPES);
   BLESerial.print(F("    SENSOR MODE:"));
-  BLESerial.println(sensorMode);
+  BLESerial.println(SENSOR_MODES);
   BLESerial.print(F("    SENSOR TRESHOLD VALUE:"));
-  BLESerial.println(sensorTreshold);
+  BLESerial.println(sensorThreshold);
   BLESerial.print(F("    FREQUENCY (IN SECONDS)"));
   BLESerial.println((freqy / 1000));
   BLESerial.println(F("********************************"));
   Serial.println(F("******** CONFIG WIZARD: ********"));
   Serial.print(F("    TYPE: "));
-  Serial.println(type);
+  Serial.println(SENSOR_TYPES);
   Serial.print(F("    SENSOR MODE: "));
-  Serial.println(sensorMode);
+  Serial.println(SENSOR_MODES);
   Serial.print(F("    SENSOR TRESHOLD VALUE: "));
-  Serial.println(sensorTreshold);
+  Serial.println(sensorThreshold);
   Serial.print(F("    SENSOR TRESHOLD MODE: "));
-  Serial.println(tresholdMode);
+  Serial.println(THRESHOLD_MODES);
   Serial.print(F("    FREQUENCY: "));
   Serial.println(freqy / 1000);
   Serial.print(F("    USED MEMORY INDEX: "));
@@ -139,49 +140,49 @@ void loop() {
         break;
       case 'w':
         Serial.println(F(" SENSOR SET: TEMPERATURE"));
-        type = 0;
+        SENSOR_TYPES = temperature;
         status("ready");
         break;
       case 'd':
         Serial.println(F("SENSOR SET: DISTANCE"));
-        type = 1;
+        SENSOR_TYPES = distance;
         status("ready");
         break;
       case 'l':
         Serial.println(F("SENSOR SET: LIGHT"));
-        type = 2;
+        SENSOR_TYPES = photoresistor;
         status("ready");
         break;
       case 'h':
         Serial.println(F("SENSOR SET: HUMIITY"));
-        type = 3;
+        SENSOR_TYPES = humidity;
         status("ready");
         break;
       case 'e':
         Serial.println(F("MODE: EVENT"));
-        sensorMode = 2;
+        SENSOR_MODES = event;
         status("ready");
         break;
       case 's':
         Serial.println(F("MODE: SAMPLING"));
-        sensorMode = 1;
+        SENSOR_MODES = sampling;
         status("ready");
         break;
       case '-':
         Serial.println(F("TRESHOLD MODE: MIN"));
-        tresholdMode = 1;
+        THRESHOLD_MODES = minimum;
         BLESerial.println(F("The treshold mode is MIN"));
         status("ready");
         break;
       case '+':
         Serial.println(F("TRESHOLD MODE: MAX"));
-        tresholdMode = 2;
+        THRESHOLD_MODES = maximum;
         BLESerial.println(F("The treshold mode is MAX"));
         status("ready");
         break;
       case '/':
         Serial.println(F("TRESHOLD MODE: LEVEL CHANGE TRIGGERED"));
-        tresholdMode = 3;
+        THRESHOLD_MODES = level;
         BLESerial.println(F("The treshold mode is level change triggered."));
         status("ready");
         break;
@@ -283,52 +284,52 @@ void loop() {
         break;
       case 'Q':
         Serial.println(F("GET THE CUSTOM TRESHOLD VALUE"));
-        sensorTreshold = 0; // Delete the optional sensor value
+        sensorThreshold = 0; // Delete the optional sensor value
         readBLE();
         while (recieveBuff != ':') {
-          sensorTreshold = 10 * sensorTreshold + (recieveBuff - '0');
+          sensorThreshold = 10 * sensorThreshold + (recieveBuff - '0');
           readBLE();
         }
         Serial.print(F("Treshold configured to: "));
-        Serial.println(sensorTreshold);
+        Serial.println(sensorThreshold);
         status("ready");
         break;
       case 'q':
         Serial.println(F("TRESHOLD SAMPLING IS PROCESSED"));
-        switch (type) {
-          case 0: // TEMPERATURE SENSOR SETUP
+        switch (SENSOR_TYPES) {
+          case temperature:
             DHT.read11(DHT11_PIN);
-            sensorTreshold = DHT.temperature;
+            sensorThreshold = DHT.temperature;
             BLESerial.print(F("Temperature: "));
             break;
-          case 1: // DISTANCE SENSOR SETUP
-            sensorTreshold = digitalRead(HALL_PIN);
+          case distance:
+            sensorThreshold = digitalRead(HALL_PIN);
             BLESerial.print(F("Hall sensor: "));
             break;
-          case 2:  // LIGHT SENSOR SETUP
-            sensorTreshold = map(analogRead(PHOTORESIS_PIN), 0, 800, 0, 255);
+          case photoresistor:
+            sensorThreshold = map(analogRead(PHOTORESIS_PIN), 0, 800, 0, 255);
             BLESerial.print(F("Light: "));
             break;
-          case 3: // HUMIDITY SENSOR SETUP
+          case humidity:
             DHT.read11(DHT11_PIN);
-            sensorTreshold = DHT.humidity;
+            sensorThreshold = DHT.humidity;
             BLESerial.print(F("Humidity: "));
             break;
           default:
             Serial.println(F("This sensor type is not defined yet"));
             break;
         }
-        BLESerial.println(sensorTreshold);
+        BLESerial.println(sensorThreshold);
 
         // The duplicated for the treshold placer in Client application
         BLESerial.print(F("SENSOR:TRESHOLD/"));
-        BLESerial.println(sensorTreshold);
+        BLESerial.println(sensorThreshold);
         status("ready");
         break;
       case 'r':
         memoryIndex = 0;  // Set defult paramaters
         memoryPage = 0;   // Set defult paramaters
-        if (sensorMode == 1) { //SAMPLING MODE
+        if (SENSOR_MODES == sampling) {
           Serial.println(F("****** START SAMPLING MODE ******"));
           prevMillis = 0;
           while (recieveBuff != 'p') {
@@ -336,24 +337,24 @@ void loop() {
             if (currentMillis - prevMillis >= freqy ) {
               prevMillis = currentMillis;
               Serial.println(F("Debug log: Interrupt occured."));
-              switch (type) {
-                case 0: // TEMPERATURE SENSOR SETUP
+              switch (SENSOR_TYPES) {
+                case temperature:
                   DHT.read11(DHT11_PIN);
                   writeBuffer[memoryIndex] = DHT.temperature;
                   BLESerial.print(F("Temperature: "));
                   BLESerial.println(writeBuffer[memoryIndex]);
                   break;
-                case 1: // DISTANCE SENSOR SETUP
+                case distance:
                   writeBuffer[memoryIndex] = digitalRead(HALL_PIN);
                   BLESerial.print(F("Hall sensor: "));
                   BLESerial.println(writeBuffer[memoryIndex]);
                   break;
-                case 2:  // LIGHT SENSOR SETUP
+                case photoresistor:
                   writeBuffer[memoryIndex] = map(analogRead(PHOTORESIS_PIN), 0, 800, 0, 255);
                   BLESerial.print(F("SAMPLING MODE Light: "));
                   BLESerial.println(writeBuffer[memoryIndex]);
                   break;
-                case 3: // HUMIDITY SENSOR SETUP
+                case humidity:
                   DHT.read11(DHT11_PIN);
                   writeBuffer[memoryIndex] = DHT.humidity;
                   BLESerial.print(F("Humidity: "));
@@ -383,7 +384,7 @@ void loop() {
             }
           }
           status("ready");
-        } else if (sensorMode == 2) { // EVENT BASED MODE
+        } else if (SENSOR_MODES == event) {
           Serial.println(F("****** START EVENT BASE MODE ******"));
           prevMillis = 0;
           while (recieveBuff != 'p') {
@@ -393,47 +394,47 @@ void loop() {
               Serial.println(F("Debug log: Interrupt occured."));
 
               // get tmpSensor the right value depend on the picked sensor
-              switch (type) {
-                case 0: // WEATHER SENSOR SETUP
+              switch (SENSOR_TYPES) {
+                case temperature:
                   DHT.read11(DHT11_PIN);
                   tmpSensor = DHT.temperature;
                   break;
-                case 1: // DISTANCE SENSOR SETUP
+                case distance:
                   tmpSensor = digitalRead(HALL_PIN);
                   break;
-                case 2:  // LIGHT SENSOR SETUP
+                case photoresistor:
                   tmpSensor = map(analogRead(PHOTORESIS_PIN), 0, 800, 0, 255);
                   break;
-                case 3:  // HUMIDITY SENSOR SETUP
+                case humidity:
                   DHT.read11(DHT11_PIN);
                   tmpSensor = DHT.humidity;
                   break;
               }
 
-              switch (tresholdMode) {
-                case 3:  // EVENT BASED TRESHOLD MODE
+              switch (THRESHOLD_MODES) {
+                case level:
                   if(!memoryIndexOverFlowFlag) {
-                    if (tmpSensor < sensorTreshold && tresholdFlag == 0) {
+                    if (tmpSensor < sensorThreshold && thresholdFlag == 0) {
                       Serial.println(F("Event detected: SENSOR < TRESHOLD"));
                       writeBuffer[memoryIndex] = tmpSensor;
                       writeBuffer[memoryIndex+1] = 0;
-                      writeBuffer[memoryIndex+2] = (uint8_t) second();
+                      writeBuffer[memoryIndex+2] = (uint8_t) second();  // make a function call for it 
                       writeBuffer[memoryIndex+3] = (uint8_t) minute();
                       writeBuffer[memoryIndex+4] = (uint8_t) hour();
                       writeBuffer[memoryIndex+5] = (uint8_t) day();
                       writeBuffer[memoryIndex+6] = (uint8_t) month();
-                      tresholdFlag = 1;
+                      thresholdFlag = 1;
                       writerFlag = true;
-                    } else if (tmpSensor >= sensorTreshold && tresholdFlag == 1) {
+                    } else if (tmpSensor >= sensorThreshold && thresholdFlag == 1) {
                       Serial.println(F("Event detected: SENSOR > TRESHOLD"));
                       writeBuffer[memoryIndex] = tmpSensor;
                       writeBuffer[memoryIndex+1] = 1;
-                      writeBuffer[memoryIndex+2] = (uint8_t) second();
+                      writeBuffer[memoryIndex+2] = (uint8_t) second();  // no code duplication
                       writeBuffer[memoryIndex+3] = (uint8_t) minute();
                       writeBuffer[memoryIndex+4] = (uint8_t) hour();
                       writeBuffer[memoryIndex+5] = (uint8_t) day();
                       writeBuffer[memoryIndex+6] = (uint8_t) month();
-                      tresholdFlag = 0;
+                      thresholdFlag = 0;
                       writerFlag = true;
                     } else {
                       Serial.println(F("No changes..."));
@@ -443,7 +444,7 @@ void loop() {
                   if (writerFlag) {
                     Serial.print(F("Memory index: ")); Serial.print(memoryIndex);
                     Serial.print(F(" |  PAGE SIZE: ")); Serial.print(PAGE_SIZE);
-                    Serial.print(F(" | Sensor treshold value: ")); Serial.println(sensorTreshold);
+                    Serial.print(F(" | Sensor treshold value: ")); Serial.println(sensorThreshold);
                     BLESerial.print("Sensor value: "); BLESerial.println(writeBuffer[memoryIndex]);
                     if ((memoryIndex-1) == PAGE_SIZE) { // WRITE DATA IF WRITER FLAG CHANGED
                       Serial.println(F("Memory index == PAGE_SIZE, so write it out to the memory."));
@@ -475,14 +476,14 @@ void loop() {
                   }
 
                   break;
-                case 2:
-                  if (tmpSensor > sensorTreshold) {
+                case maximum:
+                  if (tmpSensor > sensorThreshold) {
                     BLESerial.print(F("[MAX]: The sensor value: "));
                     BLESerial.println(tmpSensor);
                   }
                   break;
-                case 1:
-                  if (tmpSensor < sensorTreshold) {
+                case minimum:
+                  if (tmpSensor < sensorThreshold) {
                     BLESerial.print(F("[MIN]: The sensor value: "));
                     BLESerial.println(tmpSensor);
                   }
