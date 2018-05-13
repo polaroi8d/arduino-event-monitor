@@ -22,6 +22,7 @@ flash FLASH;
 SensorTypes SENSOR_TYPES;
 SensorModes SENSOR_MODES;
 ThresholdModes THRESHOLD_MODES;
+struct Time TIME;
 
 /** CONFIG */
 uint8_t sensorThreshold;
@@ -29,23 +30,7 @@ unsigned long freqy;
 byte thresholdFlag = 0;
 uint8_t tmpSensor;
 
-/** TIME */
-unsigned long timeNow = 0;
-unsigned long timeLast = 0;
-uint8_t seconds = 0;
-uint8_t minutes = 0;
-uint8_t hours = 0;
-uint8_t days = 0;
-uint8_t months = 0;
-boolean writerFlag = false;
-boolean memoryIndexOverFlowFlag = false;
 boolean tized;
-
-/** FLASH MEMORY */
-uint8_t writeBuffer[PAGE_SIZE + 1];
-uint8_t readBuffer[PAGE_SIZE + 1];
-int memoryIndex = 0;
-int memoryPage = 0;
 
 // BLE Serial
 char recieveBuff;
@@ -74,7 +59,7 @@ void status(char status[]) {
   }
 }
 
-void printConfig() {
+void printConfig(int memoryIndex, int memoryPage) {
   BLESerial.println(F("******** CONFIG WIZARD: ********"));
   BLESerial.print(F("    TYPE:"));
   BLESerial.println(SENSOR_TYPES);
@@ -123,8 +108,16 @@ void readBLE() {
 }
 
 void loop() {
-    int pageReadCounter = 0;
+  static uint8_t pageReadCounter = 0;
+  static boolean memoryIndexOverFlowFlag = false;
+  static boolean writerFlag = false;
 
+  /** FLASH MEMORY */
+  static uint8_t writeBuffer[PAGE_SIZE + 1];
+  static uint8_t readBuffer[PAGE_SIZE + 1];
+  static uint16_t memoryIndex = 0;
+  static uint8_t memoryPage = 0;
+  
     if (BLESerial.available()) {
     recieveBuff = BLESerial.read();  // BLE recieve buffer
     Serial.print(F("[RECIEVED BUFFER]: "));
@@ -136,7 +129,7 @@ void loop() {
         status("ready");
         break;
       case 'c':  // CONFIG PRINT
-        printConfig();
+        printConfig(memoryIndex, memoryPage);
         break;
       case 'w':
         Serial.println(F(" SENSOR SET: TEMPERATURE"));
@@ -241,21 +234,21 @@ void loop() {
           readBLE();
           if(recieveBuff == '/') { break; }
           if (tized) {
-            hours = (recieveBuff - '0') * 10;  //convert char to digit
+            TIME.hours = (recieveBuff - '0') * 10;  //convert char to digit
             tized = false;
-          } else { hours += (recieveBuff - '0'); }
+          } else { TIME.hours += (recieveBuff - '0'); }
         }
         tized = true;
         while (1){
           readBLE();
           if(recieveBuff == ':') { break; }
           if (tized) {
-            minutes = (recieveBuff - '0') * 10;  //convert char to digit
+            TIME.minutes = (recieveBuff - '0') * 10;  //convert char to digit
             tized = false;
-          } else { minutes += (recieveBuff - '0'); }
+          } else { TIME.minutes += (recieveBuff - '0'); }
         }
         status("ready");
-        setTime(hours, minutes, 0, DAY, MONTH, YEAR);
+        setTime(TIME.hours, TIME.minutes, 0, DAY, MONTH, YEAR);
         BLESerial.println(F("Time is configured."));
         Serial.print(F("Time is configured:"));
         printTime();
@@ -418,7 +411,7 @@ void loop() {
                       Serial.println(F("Event detected: SENSOR < THRESHOLD"));
                       writeBuffer[memoryIndex] = tmpSensor;
                       writeBuffer[memoryIndex+1] = 0;
-                      writeBuffer[memoryIndex+2] = (uint8_t) second();  // make a function call for it 
+                      writeBuffer[memoryIndex+2] = (uint8_t) second();
                       writeBuffer[memoryIndex+3] = (uint8_t) minute();
                       writeBuffer[memoryIndex+4] = (uint8_t) hour();
                       writeBuffer[memoryIndex+5] = (uint8_t) day();
@@ -429,7 +422,7 @@ void loop() {
                       Serial.println(F("Event detected: SENSOR > THRESHOLD"));
                       writeBuffer[memoryIndex] = tmpSensor;
                       writeBuffer[memoryIndex+1] = 1;
-                      writeBuffer[memoryIndex+2] = (uint8_t) second();  // no code duplication
+                      writeBuffer[memoryIndex+2] = (uint8_t) second();
                       writeBuffer[memoryIndex+3] = (uint8_t) minute();
                       writeBuffer[memoryIndex+4] = (uint8_t) hour();
                       writeBuffer[memoryIndex+5] = (uint8_t) day();
@@ -440,7 +433,26 @@ void loop() {
                       Serial.println(F("No changes..."));
                     }
                   }
-
+                  break;
+                case maximum:
+                  if (tmpSensor > sensorThreshold) {
+                    BLESerial.print(F("[MAX]: The sensor value: "));
+                    BLESerial.println(tmpSensor);
+                    writeBuffer[memoryIndex] = tmpSensor;
+                  }
+                  break;
+                case minimum:
+                  if (tmpSensor < sensorThreshold) {
+                    BLESerial.print(F("[MIN]: The sensor value: "));
+                    BLESerial.println(tmpSensor);
+                    writeBuffer[memoryIndex] = tmpSensor;
+                  }
+                  break;
+                default:
+                  BLESerial.print(F("There is no such a THRESHOLD mode."));
+                  Serial.println(F("Warning: THRESHOLD mode not found!"));
+                  break;
+              }
                   if (writerFlag) {
                     Serial.print(F("Memory index: ")); Serial.print(memoryIndex);
                     Serial.print(F(" |  PAGE SIZE: ")); Serial.print(PAGE_SIZE);
@@ -474,25 +486,7 @@ void loop() {
                   } else {
                     memoryIndexOverFlowFlag = false;
                   }
-
-                  break;
-                case maximum:
-                  if (tmpSensor > sensorThreshold) {
-                    BLESerial.print(F("[MAX]: The sensor value: "));
-                    BLESerial.println(tmpSensor);
-                  }
-                  break;
-                case minimum:
-                  if (tmpSensor < sensorThreshold) {
-                    BLESerial.print(F("[MIN]: The sensor value: "));
-                    BLESerial.println(tmpSensor);
-                  }
-                  break;
-                default:
-                  BLESerial.print(F("There is no such a THRESHOLD mode."));
-                  Serial.println(F("Warning: THRESHOLD mode not found!"));
-                  break;
-              }
+              
             }
 
             if (BLESerial.available()) {
