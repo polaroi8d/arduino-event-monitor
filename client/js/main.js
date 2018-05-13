@@ -199,7 +199,7 @@ let terminal = new BluetoothTerminal();
 terminal.receive = function(data) {
   if (data.includes("STATUS:READY")) {
     statusReady();
-  } else if (data.includes("SENSOR:TRESHOLD")){
+  } else if (data.includes("SENSOR:THRESHOLD")){
       var tresholdValue = data.split('/');
       document.getElementById("tresholdValue").value = tresholdValue[1];
   } else if (data.includes("DATA:TRANSFER")) {
